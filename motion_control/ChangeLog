@@ -1,0 +1,6 @@
+MotionControl Stack -- history of user-visible changes.
+
+* tagged v0.6 [2013-01-24 Thu]
+** Bugfix from Dominick Vanthienen: NAxisGeneratorPos::moveTo started from end of last trajectory instead of current pos.
+** patch from Bert Willaert which fixes event names (adds underscores) and miscellaneous cleanup.
+

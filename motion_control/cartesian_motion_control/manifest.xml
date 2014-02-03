@@ -1,0 +1,14 @@
+<package>
+    <description brief="Orocos motion_control Component package">
+        This package contains the components of the motion_control package
+    </description>
+    <license>GPLv2+</license>
+    <author>Ruben Smits, Klaas Gadeyne, Wim Meussen, Markus Klotzbuecher</author>
+    <url>http://git.mech.kuleuven.be/?p=robotics/motion_control.git</url>
+    <depend package="rtt" />
+    <depend package="ocl" />
+    <depend package="orocos_kdl" />
+    <depend package="tf_conversions" />
+    <depend package="rtt_geometry_msgs" />
+</package>
+

@@ -1,0 +1,7 @@
+This class implements a TaskContext that controlls the end-effector
+frame of a robot. It uses a simple position-feedback to calculate an
+output twist.  
+
+<code lang='C++'>
+twist_out = K_gain * ( frame_desired - frame_measured)
+</code>

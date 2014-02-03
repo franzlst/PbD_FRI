@@ -1,0 +1,30 @@
+Motion Control Stack
+====================
+
+This stack contains components for joint and cartesian space motion
+control.
+
+
+History and Acknowledgement
+---------------------------
+
+The oldest components in this motion_control stack were developed
+almost 10 years ago (as of 2012) by Klaas Gadeyne and Wim Meussen
+(according to in-line comments). After the Orocos OCL library was
+reduced to contain only infrastructure during the RTTv2 transition,
+this code was adopted under the name motion_control and ported to
+RTT-v2 by and Markus Klotzbuecher and Ruben Smits.
+
+This work is/has been supported by the following projects:
+
+* European FP7 projects:
+
+    - Rosetta: FP7-230902, Robot control for skilled execution of
+      tasks in natural interaction with humans; based on autonomy,
+      cumulative knowledge and learning
+
+    - BRICS: FP7-231940, Best practices in robotics
+
+* KU Leuven
+    - KU Leuven’s Concerted Research Action GOA/2005/010 and GOA/2010/011  
+    - KU Leuven-BOF PFV/10/002 Center-of-Excellence Optimization in Engineering (OPTEC),

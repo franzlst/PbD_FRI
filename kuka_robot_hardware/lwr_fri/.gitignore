@@ -5,6 +5,7 @@ catkin_generated/
 CMakeChache.txt
 CMakeFiles/
 cmake_install.cmake
+cmake_uninstall.cmake
 devel/
 gtest/
 include/

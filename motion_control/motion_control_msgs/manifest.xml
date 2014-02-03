@@ -1,0 +1,14 @@
+<package>
+  <description brief="motion_control_msgs">
+
+     motion_control_msgs
+
+  </description>
+  <author>Intermodalics</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/motion_control_msgs</url>
+
+</package>
+
+

@@ -1,0 +1,5 @@
+This component is the bridge between a hardware
+nAxesVelocityController and the Cartesian space control components. It
+calculates the forward position kinematics and the inverse velocity
+kinematics for a KDL::Chain, the kinematic algorithms are given by the
+user.

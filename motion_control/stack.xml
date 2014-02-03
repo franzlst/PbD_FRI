@@ -1,0 +1,10 @@
+<stack>
+  <description brief="motion_control">motion_control</description>
+  <author>Maintained by Robotics Group of Mech. Dept. of K.U.Leuven </author>
+  <license>GPLv2+</license>  
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/motion_control</url>
+  <depend stack="orocos_kinematics_dynamics" /> <!-- orocos_kdl -->
+  <depend stack="orocos_toolchain" /> <!-- rtt, ocl -->
+  <depend stack="ros" />
+</stack>

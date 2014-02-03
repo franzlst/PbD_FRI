@@ -1,0 +1,14 @@
+<package>
+    <description brief="Orocos naxes_motion_control Component package">
+        This package contains the components of the naxes_motion_control package
+    </description>
+    <!--NOTE: set the license and author before you publish this code-->
+    <license></license>
+    <author>Unknown Author</author>
+    <depend package="rtt" />
+    <depend package="orocos_kdl" />
+    <depend package="rtt_motion_control_msgs"/>
+    <depend package="rtt_sensor_msgs"/>
+    <depend package="rtt_trajectory_msgs" />
+</package>
+

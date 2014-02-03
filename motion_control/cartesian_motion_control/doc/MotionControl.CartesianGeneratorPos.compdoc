@@ -1,0 +1,9 @@
+
+This class implements a TaskContext that creates a path in Cartesian
+space between the current cartesian position and a new desired
+cartesian position. It uses trapezoidal velocity-profiles for every
+dof using a maximum velocity and a maximum acceleration. It generates
+frame and twist setpoints which can be used by
+MotionControl::CartesianControllerPos,
+MotionControl::CartesianControllerPosVel or
+MotionControl::CartesianControllerVel.
