@@ -1,0 +1,10 @@
+<package>
+    <description brief="Orocos basic_moves Component package">
+        This package contains the components of the basic_moves package
+    </description>
+    <!--NOTE: set the license and author before you publish this code-->
+    <license></license>
+    <author>Unknown Author</author>
+    <depend package="rtt" />
+</package>
+
