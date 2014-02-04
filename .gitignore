@@ -3,6 +3,7 @@ rtt_common_msgs/
 rtt_geometry/
 rtt_ros_comm/
 rtt_ros_integration/
+orocos_toolchain/
 
 ## Orocos
 
@@ -10,6 +11,7 @@ orocos.log
 *-xenomai.pc
 .rosinstall
 reports.dat
+typekit/
 
 ## C++
 

@@ -10,6 +10,15 @@ cmake_minimum_required(VERSION 2.6.3)
 #
 project(basic_moves)
 
+set (ROS_ROOT $ENV{ROS_ROOT} )
+if (ROS_ROOT)
+  include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
+  rosbuild_init()
+  rosbuild_find_ros_package( rtt )
+  set( RTT_HINTS HINTS ${rtt_PACKAGE_PATH}/install )
+endif()
+
+
 # Use 'source orocos_toolchain/env.sh' if the command below fails:
 find_package(OROCOS-RTT QUIET)
 if (NOT OROCOS-RTT_FOUND)
