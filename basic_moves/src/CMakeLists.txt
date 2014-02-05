@@ -1,4 +1,8 @@
 
+# Activate C++11 features
+ADD_DEFINITIONS(
+    -std=gnu++0x
+)
 #
 # Components, types and plugins.
 #
@@ -32,7 +36,7 @@ orocos_install_headers(basic_moves-component.hpp) # ...you may add multiple head
 # Be aware that a plugin may only have the loadRTTPlugin() function once defined in a .cpp file.
 # This function is defined by the plugin and service CPP macros.
 #
-orocos_plugin(basic_moves-plugin basic_moves-plugin.cpp) # ...only one plugin function per library !
+#orocos_plugin(basic_moves-plugin basic_moves-plugin.cpp) # ...only one plugin function per library !
 #
 # You may add multiple orocos_plugin statements.
 
@@ -43,7 +47,7 @@ orocos_plugin(basic_moves-plugin basic_moves-plugin.cpp) # ...only one plugin fu
 # Creates a plugin library libbasic_moves-service-<target>.so
 # and installs in the directory lib/orocos/basic_moves/plugins/
 #
-orocos_service(basic_moves-service basic_moves-service.cpp) # ...only one service per library !
+#orocos_service(basic_moves-service basic_moves-service.cpp) # ...only one service per library !
 #
 # You may add multiple orocos_service statements.
 
@@ -54,7 +58,7 @@ orocos_service(basic_moves-service basic_moves-service.cpp) # ...only one servic
 # Creates a library libsupport-<target>.so and installs it in
 # lib/
 #
-orocos_library(support support.cpp) # ...you may add multiple source files
+#orocos_library(support support.cpp) # ...you may add multiple source files
 #
 # You may add multiple orocos_library statements.
 
