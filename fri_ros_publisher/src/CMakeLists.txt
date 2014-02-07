@@ -11,6 +11,7 @@
 # and installs in the directory lib/orocos/fri_ros_publisher/
 #
 orocos_component(fri_ros_publisher fri_ros_publisher-component.hpp fri_ros_publisher-component.cpp) # ...you may add multiple source files
+orocos_component(fri_ros_receiver fri_ros_receiver-component.hpp fri_ros_receiver-component.cpp) # ...you may add multiple source files
 #
 # You may add multiple orocos_component statements.
 
@@ -19,7 +20,7 @@ orocos_component(fri_ros_publisher fri_ros_publisher-component.hpp fri_ros_publi
 #
 # Installs in the include/orocos/fri_ros_publisher/ directory
 #
-orocos_install_headers(fri_ros_publisher-component.hpp) # ...you may add multiple header files
+orocos_install_headers(fri_ros_publisher-component.hpp fri_ros_receiver-component.hpp) # ...you may add multiple header files
 #
 # You may add multiple orocos_install_headers statements.
 
@@ -54,7 +55,7 @@ orocos_install_headers(fri_ros_publisher-component.hpp) # ...you may add multipl
 # Creates a library libsupport-<target>.so and installs it in
 # lib/
 #
-orocos_library(support support.cpp) # ...you may add multiple source files
+#orocos_library(support support.cpp) # ...you may add multiple source files
 #
 # You may add multiple orocos_library statements.
 

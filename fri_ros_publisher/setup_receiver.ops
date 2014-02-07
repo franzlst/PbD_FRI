@@ -1,0 +1,49 @@
+/**
+ * Configuration and startup file for the fri_ros_publisher
+ * 
+ * The purpose is to publish relevant information to ROS topics 
+ */
+
+// Load necessary components
+
+import("rtt_rosnode")
+import("ocl")
+import("lwr_fri")
+import("fri_ros_publisher")
+
+// First load the FRI server
+loadComponent("FRIServer", "lwr_fri::FRIComponent")
+
+
+// Filter FRI values and publish them
+loadComponent("Receiver", "iros::FRI_ROS_Receiver")
+
+// Not periodic, highest priority, real-time scheduler
+setActivity("FRIServer", 0, HighestPriority, ORO_SCHED_RT)
+FRIServer.udp_port=49938
+
+
+// Not periodic, highest priority, real-time scheduler
+setActivity("Receiver", 0, HighestPriority, ORO_SCHED_RT)
+#Receiver.traj_bag_file=traj.bag
+
+// Standart connection policy
+var ConnPolicy cp
+cp.type = DATA
+
+// Connect FRIServer (output) and Publisher ports (input)
+connect("FRIServer.FRIState", "Receiver.FRIState", cp)
+connect("FRIServer.RobotState", "Receiver.RobotState", cp)
+connect("FRIServer.FriJointImpedance", "Receiver.JointImpedancePort", cp)
+connect("FRIServer.CartesianImpedanceCommand", "Receiver.CartImpedancePort", cp)
+connect("FRIServer.CartesianPosition", "Receiver.CurCartPosPort", cp)
+connect("FRIServer.CartesianPositionCommand", "Receiver.CartPosPort", cp)
+connect("FRIServer.CartesianWrenchCommand", "Receiver.CartForcePort", cp)
+
+FRIServer.configure()
+Receiver.configure()
+
+
+// Start the Server and Receiver
+FRIServer.start()
+Receiver.start()

@@ -49,10 +49,10 @@ stream("Publisher.Pose_ROSPort", ros.topic("/fri/Pose"))
 stream("Publisher.Force_ROSPort", ros.topic("/fri/Force")) 
 
 Timer.configure()
-FRIServer.configure()
-Publisher.configure()
-
 Timer.start()
+
+FRIServer.configure()
+
 
 // Start the server
 FRIServer.start()
@@ -61,4 +61,5 @@ FRIServer.start()
 Timer.wait(1, 1)
 
 // Now start the Publisher
+Publisher.configure()
 Publisher.start()
