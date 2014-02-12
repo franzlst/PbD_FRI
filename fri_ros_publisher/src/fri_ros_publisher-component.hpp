@@ -25,7 +25,8 @@ using namespace std;
 		void cleanupHook();
 
 	  private:
-		InputPort<tFriRobotState> robot_state_port;
+
+	    InputPort<tFriRobotState> robot_state_port;
 		InputPort<tFriIntfState> fri_state_port;
 
 		tFriRobotState current_robot_state;
@@ -35,12 +36,16 @@ using namespace std;
 		InputPort< geometry_msgs::Pose > pose_port;
 		InputPort< geometry_msgs::Wrench > force_port;
 
+		Property<bool> fts_publish;
+
 		OutputPort<lwr_fri::FriJointImpedance> joint_impedance_port;
 		OutputPort<lwr_fri::CartesianImpedance> cart_impedance_port;
 
 		OutputPort< sensor_msgs::JointState >  joints_pos_ros_port;
 		OutputPort< geometry_msgs::Pose > pose_ros_port;
 		OutputPort< geometry_msgs::Wrench > force_ros_port;
+
+		OutputPort<bool> publishing_event;
 
 		lwr_fri::FriJointImpedance gravity_compensation_joints;
 		lwr_fri::CartesianImpedance gravity_compensation_cart;

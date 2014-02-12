@@ -1,0 +1,77 @@
+/**
+ * Configuration and startup file for the fri_ros_publisher
+ * 
+ * The purpose is to publish relevant information to ROS topics 
+ */
+
+// Load necessary components
+
+import("rtt_rosnode")
+import("ocl")
+import("lwr_fri")
+import("fri_ros_publisher")
+import("FTSensor")
+
+// First load the FRI server
+loadComponent("FRIServer", "lwr_fri::FRIComponent")
+loadComponent("FTSensor", "iros::FTSensor")
+
+// Used for wait statement
+loadComponent("Timer", "OCL::TimerComponent")
+
+// Filter FRI values and publish them
+loadComponent("Publisher", "iros::FRI_ROS_Publisher")
+
+// Not periodic, highest priority, real-time scheduler
+setActivity("FRIServer", 0, HighestPriority, ORO_SCHED_RT)
+FRIServer.udp_port=49938
+
+// Run timer each 10ms with lowest priority
+setActivity("Timer", 0.01, LowestPriority, ORO_SCHED_RT)
+
+// Not periodic, highest priority, real-time scheduler
+setActivity("Publisher", 0, HighestPriority, ORO_SCHED_RT)
+
+// 10000Hz, highest priority, real-time scheduler
+setActivity("FTSensor", 0.0001, HighestPriority, ORO_SCHED_RT)
+
+// Standart connection policy
+var ConnPolicy cp
+cp.type = DATA
+
+// Connect FRIServer (output) and Publisher ports (input)
+connect("FRIServer.FRIState", "Publisher.FRIState", cp)
+connect("FRIServer.RobotState", "Publisher.RobotState", cp)
+connect("FRIServer.FriJointImpedance", "Publisher.JointImpedancePort", cp)
+connect("FRIServer.CartesianImpedanceCommand", "Publisher.CartImpedancePort", cp)
+connect("FRIServer.JointState", "Publisher.JointsPort", cp)
+connect("FRIServer.CartesianPosition", "Publisher.PosePort", cp)
+connect("FRIServer.CartesianWrench", "Publisher.ForcePort", cp)
+
+connect("Publisher.Publishing", "FTSensor.Publishing", cp)
+
+// Stream Publisher outputs to ROS
+stream("Publisher.JointsPos_ROSPort", ros.topic("/fri/JointPos")) 
+stream("Publisher.Pose_ROSPort", ros.topic("/fri/Pose"))
+stream("Publisher.Force_ROSPort", ros.topic("/fri/Force"))
+
+stream("FTSensor.ForcePort", ros.topic("/fri/FTForce"))
+stream("FTSensor.TorquePort", ros.topic("/fri/FTTorque"))
+
+Timer.configure()
+Timer.start()
+
+FRIServer.configure()
+FTSensor.configure()
+
+
+// Start the server
+FRIServer.start()
+FTSensor.start()
+
+// Wait until the connection is established and synchronized
+Timer.wait(1, 1)
+
+// Now start the Publisher
+Publisher.configure()
+Publisher.start()

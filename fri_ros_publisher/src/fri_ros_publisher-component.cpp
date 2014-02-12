@@ -7,7 +7,7 @@ namespace iros {
 	using namespace RTT;
 	using namespace std;
 
-	FRI_ROS_Publisher::FRI_ROS_Publisher(std::string const& name) : TaskContext(name){
+	FRI_ROS_Publisher::FRI_ROS_Publisher(std::string const& name) : TaskContext(name) {
 		Logger::In in((this->getName()));
 
 		// Input ports
@@ -25,6 +25,8 @@ namespace iros {
 		this->ports()->addPort("JointsPos_ROSPort", joints_pos_ros_port).doc("Publish joint positions");
 		this->ports()->addPort("Pose_ROSPort", pose_ros_port).doc("Publish pose of the tool");
 		this->ports()->addPort("Force_ROSPort", force_ros_port).doc("Publish external force");
+
+		this->ports()->addPort("Publishing", publishing_event).doc("Triggers event on publishing");
 
 		for(auto i = 0; i < 7; i++) {
 			gravity_compensation_joints.damping[i] = 0.7;
@@ -74,6 +76,7 @@ namespace iros {
 			log(Error) << "Force port not connected. Stopping..." << endlog();
 			return false;
 		}
+
 
 		log(Info) << "FRI_ROS_Publisher configured !" << endlog();
 		return true;
@@ -146,6 +149,8 @@ namespace iros {
 				joints_pos_ros_port.write(current_joints_pos);
 				pose_ros_port.write(current_pose);
 				force_ros_port.write(current_force);
+
+				publishing_event.write(true);
 			}
 		}
 
