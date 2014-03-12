@@ -1,0 +1,16 @@
+<package>
+    <description brief="Orocos KUKACommander Component package">
+        This package contains the components of the KUKACommander package
+    </description>
+    <!--NOTE: set the license and author before you publish this code-->
+    <license>MIT</license>
+    <author>Franz Steinmetz</author>
+    <depend package="rtt" />
+	<depend package="orocos_kdl" />
+	<depend package="kuka_lwr_fri"/>
+  	<depend package="lwr_fri"/>
+	<depend package="rtt_motion_control_msgs"/>
+	<depend package="rtt_sensor_msgs"/>
+	<depend package="rtt_trajectory_msgs" />
+</package>
+

@@ -1,0 +1,7 @@
+float32 timestamp
+uint16 state
+uint16 quality
+float32 desiredMsrSampleTime
+float32 desiredCmdSampleTime
+float32 safetyLimits
+FriIntfStatistics stat

@@ -42,6 +42,7 @@
 namespace lwr_fri {
 
 using namespace RTT;
+using namespace std;
 
 FRIRTNetComponent::FRIRTNetComponent(const string& name) :
 	TaskContext(name, PreOperational){

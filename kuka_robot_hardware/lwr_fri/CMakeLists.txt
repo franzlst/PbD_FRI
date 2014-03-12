@@ -53,7 +53,7 @@ if(RTNET_INCLUDE_DIR AND ${OROCOS_TARGET} STREQUAL "xenomai" )
   orocos_add_compile_flags(lwr_fri ${XENO_CFLAGS})
   orocos_add_link_flags(lwr_fri ${XENO_LDFLAGS})
 else()
-  orocos_component(lwr_fri src/FRIComponent.cpp) # ...you may add multiple source files
+  orocos_component(lwr_fri src/FRIComponent.cpp src/FRIRTNetComponent.cpp src/FRIRTNetComponent.hpp) # ...you may add multiple source files
 endif()
 
 # Link with the ROS .msg typekit of this package

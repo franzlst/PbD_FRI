@@ -1,0 +1,70 @@
+/**
+ * Configuration and startup file for the fri_ros_publisher
+ * 
+ * The purpose is to publish relevant information to ROS topics 
+ */
+
+// Load necessary components
+
+import("rtt_rosnode")
+import("ocl")
+import("lwr_fri")
+import("kuka_lwr_fri")
+import("FTSensor")
+import("KUKACommander")
+
+loadComponent("FRIServer", "lwr_fri::FRIComponent")
+loadComponent("FTSensor", "iros::FTSensor")
+loadComponent("KUKACommander", "iros::KUKACommander")
+
+// Used for wait statement
+loadComponent("Timer", "OCL::TimerComponent")
+
+
+// Not periodic, highest priority, real-time scheduler
+setActivity("FRIServer", 0, HighestPriority, ORO_SCHED_RT)
+FRIServer.udp_port=49938
+
+// Run timer each 10ms with lowest priority
+setActivity("Timer", 0.01, LowestPriority, ORO_SCHED_RT)
+
+
+// 10000Hz, highest priority, real-time scheduler
+setActivity("FTSensor", 0.0001, HighestPriority, ORO_SCHED_RT)
+
+// Standart connection policy
+var ConnPolicy cp
+cp.type = DATA
+
+// Connect FRIServer (output) and Publisher ports (input)
+connect("FRIServer.fromKRL", "KUKACommander.fromKRL", cp)
+connect("FRIServer.toKRL", "KUKACommander.toKRL", cp)
+connect("FRIServer.FRIState", "KUKACommander.FRIState", cp)
+connect("FRIServer.RobotState", "KUKACommander.RobotState", cp)
+connect("FRIServer.FriJointImpedance", "KUKACommander.JointImpedancePort", cp)
+connect("FRIServer.CartesianImpedanceCommand", "KUKACommander.CartImpedancePort", cp)
+connect("FRIServer.JointState", "KUKACommander.JointsPort", cp)
+connect("FRIServer.CartesianPosition", "KUKACommander.PosePort", cp)
+connect("FRIServer.CartesianWrench", "KUKACommander.ForcePort", cp)
+
+
+//stream("FRIServer.RobotState", ros.topic("/fri/FRIState")) 
+
+stream("FTSensor.ForcePort", ros.topic("/iros/FTForce"))
+stream("FTSensor.TorquePort", ros.topic("/iros/FTTorque"))
+
+Timer.configure()
+Timer.start()
+
+FRIServer.configure()
+FTSensor.configure()
+KUKACommander.configure()
+
+
+// Start the server
+FRIServer.start()
+KUKACommander.start()
+FTSensor.start()
+
+// Wait until the connection is established and synchronized
+//Timer.wait(1, 1)
