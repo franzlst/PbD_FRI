@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE properties SYSTEM "cpf.dtd">
+<properties>
+  <struct name="max_vel" type="/geometry_msgs/Twist">
+     <description>Maximum Velocity in Trajectory</description>
+     <struct name="linear" type="/geometry_msgs/Vector3">
+        <description>Part</description>
+        <simple name="x" type="double"><description>Part</description><value>0.15</value></simple>
+        <simple name="y" type="double"><description>Part</description><value>0.15</value></simple>
+        <simple name="z" type="double"><description>Part</description><value>0.15</value></simple>
+     </struct>
+     <struct name="angular" type="/geometry_msgs/Vector3">
+        <description>Part</description>
+        <simple name="x" type="double"><description>Part</description><value>0.1</value></simple>
+        <simple name="y" type="double"><description>Part</description><value>0.1</value></simple>
+        <simple name="z" type="double"><description>Part</description><value>0.1</value></simple>
+     </struct>
+  </struct>
+  <struct name="max_acc" type="/geometry_msgs/Twist">
+     <description>Maximum Acceleration in Trajectory</description>
+     <struct name="linear" type="/geometry_msgs/Vector3">
+        <description>Part</description>
+        <simple name="x" type="double"><description>Part</description><value>1</value></simple>
+        <simple name="y" type="double"><description>Part</description><value>1</value></simple>
+        <simple name="z" type="double"><description>Part</description><value>1</value></simple>
+     </struct>
+     <struct name="angular" type="/geometry_msgs/Vector3">
+        <description>Part</description>
+        <simple name="x" type="double"><description>Part</description><value>1</value></simple>
+        <simple name="y" type="double"><description>Part</description><value>1</value></simple>
+        <simple name="z" type="double"><description>Part</description><value>1</value></simple>
+     </struct>
+  </struct>
+</properties>

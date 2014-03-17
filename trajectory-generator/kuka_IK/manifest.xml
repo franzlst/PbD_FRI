@@ -1,0 +1,19 @@
+<package>
+    <description brief="Orocos kuka_IK Component package">
+        This package contains the components of the kuka_IK package
+    </description>
+    <!--NOTE: set the license and author before you publish this code-->
+    <license></license>
+    <author>Unknown Author</author>
+    <depend package="rtt" />
+    <depend package="ocl"/>
+    <depend package="kdl"/>
+    <depend package="orocos_kdl"/>
+    <depend package="geometry_msgs"/>
+    <depend package="sensor_msgs"/>
+    <depend package="nav_msgs"/>
+    <depend package="tf_conversions"/>
+    <depend package="lwr_fri"/>
+<!--	<depend package="eigen3"/>-->
+</package>
+

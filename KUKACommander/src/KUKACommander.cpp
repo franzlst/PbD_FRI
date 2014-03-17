@@ -26,6 +26,14 @@ namespace iros {
 		this->addPort("msrExtCartWrench", port_msrExtCartWrench).doc("Measured joint states (position/rotation)");
 
 		this->addEventPort("nAxesEvent", port_nAxesEvent, boost::bind(&KUKACommander::n_axes_process_event, this, _1)).doc("Retrieves events from nAxesGeneratorPos when a movement has started/stopped");
+		this->addEventPort("cartesianEvent", port_cartesianEvent, boost::bind(&KUKACommander::cartesian_process_event, this, _1)).doc("Retrieves events from CartesianGeneratorPos when a movement has started/stopped");
+
+		this->addEventPort("generatedCartPos", port_generatedCartPos, boost::bind(&KUKACommander::merge_generated_cartesian, this, _1)).doc("Retrieves generated desired Cartesian position");
+		this->addPort("generatedCartVel", port_generatedCartVel).doc("Retrieves generated desired Cartesian velocity");
+		this->addPort("generatedCartOdom", port_generatedCartOdom).doc("Merges Cartesian position and velocity to odometry");
+
+		this->addEventPort("generatedJntState", port_generatedJntState, boost::bind(&KUKACommander::convert_joint_state_to_pos, this, _1)).doc("Retrieves generated desired joint state");
+		this->addPort("desiredJntPos", port_desiredJntPos).doc("Converted state to joint position");
 
 		// Operations regarding the control of the KRC and grouped in the Commander service
 		provides("Commander")->addOperation("getCurrentState", &KUKACommander::getCurrentState, this, OwnThread).doc("get the current FRI state");
@@ -40,6 +48,12 @@ namespace iros {
 
 		provides("Commander")->addOperation("setCartesianImpedance", &KUKACommander::setCartesianImpedance, this, OwnThread).doc("Sets the Cartesian impedance");
 		provides("Commander")->addOperation("setJointImpedance", &KUKACommander::setJointImpedance, this, OwnThread).doc("Sets the Joint impedance");
+
+		provides("Commander")->addOperation("moveToJointPosition", &KUKACommander::moveToJointPosition, this, OwnThread).doc("Moves the arm to the desired joint position");
+		provides("Commander")->addOperation("moveToCartesianPosition", &KUKACommander::moveToCartesianPosition, this, OwnThread).doc("Moves the arm to the desired joint position");
+
+		provides("Commander")->addOperation("stopMovements", &KUKACommander::stopMovements, this, OwnThread).doc("Stops all movements");
+		provides("Commander")->addOperation("isMoving", &KUKACommander::isMoving, this, OwnThread).doc("Checks whether the robot is moving");
 
 		// Initialize variables with 0
 		data_to_krl.boolData = 0;
@@ -59,10 +73,20 @@ namespace iros {
 	bool KUKACommander::configureHook(){
 		Logger::In in((this->getName()));
 
-
-		n_axes_generator_pos_peer = getPeer("nAxesGeneratorPos");
+		if(!(n_axes_generator_pos_peer = getPeer("nAxesGeneratorPos"))) {
+			log(Error) << "Peer 'nAxesGeneratorPos' not found" << endlog();
+			return false;
+		}
 		nAxes_moveTo = n_axes_generator_pos_peer->getOperation("moveTo");
 		nAxes_resetPosition = n_axes_generator_pos_peer->getOperation("resetPosition");
+
+		if(!(cartesian_generator_pos_peer = getPeer("CartesianGeneratorPos"))) {
+			log(Error) << "Peer 'CartesianGeneratorPos' not found" << endlog();
+			return false;
+		}
+
+		cartesian_moveTo = cartesian_generator_pos_peer->getOperation("moveTo");
+		cartesian_resetPosition = cartesian_generator_pos_peer->getOperation("resetPosition");
 
 		log(Debug) << "KUKACommander configured !" << endlog();
 		return true;
@@ -235,11 +259,30 @@ namespace iros {
 		}
 	}
 
-	bool KUKACommander::moveTo(boost::array<double, 7> jointPos, double time) {
+	bool KUKACommander::moveToJointPosition(boost::array<double, 7> jointPos, double time) {
 		if(nAxes_is_moving || cart_is_moving)
 			return false;
 
 		return nAxes_moveTo(vector<double>(jointPos.begin(), jointPos.end()), time);
+	}
+
+	bool KUKACommander::moveToCartesianPosition(geometry_msgs::Pose CartPos, double time) {
+		if(nAxes_is_moving || cart_is_moving)
+			return false;
+
+		log(Debug) << "move to Cartesian pos" << endlog();
+		return cartesian_moveTo(CartPos, time);
+	}
+
+	void KUKACommander::stopMovements() {
+		if(nAxes_is_moving)
+			nAxes_resetPosition();
+		else if(cart_is_moving)
+			cartesian_resetPosition();
+	}
+
+	bool KUKACommander::isMoving() {
+		return nAxes_is_moving || cart_is_moving;
 	}
 
 	void KUKACommander::print_var_from_krl() {
@@ -268,6 +311,41 @@ namespace iros {
 			nAxes_is_moving = true;
 		} else if(data_nAxes_event.compare("finished") == 0) {
 			nAxes_is_moving = false;
+		}
+	}
+
+	void KUKACommander::cartesian_process_event(RTT::base::PortInterface*) {
+		port_cartesianEvent.read(data_cartesian_event);
+		auto pos = data_cartesian_event.find_last_of("_") + 1; // extract event name, form is "e_"+name+"_move_[event]"
+		data_cartesian_event = data_cartesian_event.substr(pos, 20);
+
+		if(data_cartesian_event.compare("started") == 0) {
+			cart_is_moving = true;
+		} else if(data_cartesian_event.compare("finished") == 0) {
+			cart_is_moving = false;
+		}
+	}
+
+	void KUKACommander::merge_generated_cartesian(RTT::base::PortInterface*) {
+		geometry_msgs::Pose tmp_pose;
+		geometry_msgs::Twist tmp_twist;
+		nav_msgs::Odometry tmp_odom;
+
+		if(port_generatedCartPos.read(tmp_pose) == NewData) {
+			port_generatedCartVel.read(tmp_twist);
+			tmp_odom.pose.pose = tmp_pose;
+			tmp_odom.twist.twist = tmp_twist;
+
+			port_generatedCartOdom.write(tmp_odom);
+		}
+	}
+
+	void KUKACommander::convert_joint_state_to_pos(RTT::base::PortInterface*) {
+		sensor_msgs::JointState tmp_state;
+		motion_control_msgs::JointPositions tmp_pos;
+		if(port_generatedJntState.read(tmp_state) == NewData) {
+			tmp_pos.positions = tmp_state.position;
+			port_desiredJntPos.write(tmp_pos);
 		}
 	}
 }

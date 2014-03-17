@@ -1,5 +1,5 @@
 /**
- * Configuration and startup file for the fri_ros_publisher
+ * Configuration and startup file for the KUKACommander
  * 
  * The purpose is to publish relevant information to ROS topics 
  */
@@ -12,16 +12,25 @@ import("lwr_fri")
 import("kuka_lwr_fri")
 import("FTSensor")
 import("naxes_motion_control")
+import("cartesian_motion_control")
+import("kuka_IK")
 import("KUKACommander")
 
 loadComponent("FRIServer", "lwr_fri::FRIServerRT")
 loadComponent("FTSensor", "iros::FTSensor")
 loadComponent("nAxesGeneratorPos", "MotionControl::nAxesGeneratorPos")
+loadComponent("CartesianGeneratorPos", "MotionControl::CartesianGeneratorPos")
+loadComponent("kuka_IK", "kuka_IK::kuka_IK")
 loadComponent("KUKACommander", "iros::KUKACommander")
 loadComponent("KUKACommanderROS", "iros::KUKACommanderROS")
 
-// Used for wait statement
-//loadComponent("Timer", "OCL::TimerComponent")
+// Set number of axes, acceleration and speed limits
+nAxesGeneratorPos.loadService("marshalling")
+nAxesGeneratorPos.marshalling.readProperties("./cpf/nAxesGeneratorConfig.cpf")
+
+// Set acceleration and speed limits
+CartesianGeneratorPos.loadService("marshalling")
+CartesianGeneratorPos.marshalling.readProperties("./cpf/CartesianGeneratorConfig.cpf")
 
 // HighestPriority = 99
 // LowestPriority = 1
@@ -35,6 +44,7 @@ FRIServer.udp_port=49938
 setActivity("FTSensor", 0.0001, HighestPriority, ORO_SCHED_RT)
 
 setActivity("nAxesGeneratorPos", 0.001, 80, ORO_SCHED_RT)
+setActivity("CartesianGeneratorPos", 0.001, 80, ORO_SCHED_RT)
 
 
 // Run timer each 10ms with lowest priority
@@ -44,6 +54,7 @@ setActivity("KUKACommanderROS", 0.01, 50, ORO_SCHED_RT)
 
 
 addPeer("KUKACommander", "nAxesGeneratorPos")
+addPeer("KUKACommander", "CartesianGeneratorPos")
 addPeer("KUKACommanderROS", "KUKACommander")
 
 // Standart connection policy
@@ -70,25 +81,36 @@ connect("FRIServer.desJntPos", "nAxesGeneratorPos.nAxesDesiredPosition", cp); //
 connect("FRIServer.desJntVel", "nAxesGeneratorPos.nAxesDesiredVelocity", cp); // Either or?
 connect("KUKACommander.nAxesEvent", "nAxesGeneratorPos.events", cp)
 
+// Connections for CartesianAxesGeneratorPos and kuka_IK
+connect("FRIServer.msrCartPos", "CartesianGeneratorPos.CartesianPoseMsr", cp)
+connect("CartesianGeneratorPos.CartesianPoseDes", "KUKACommander.generatedCartPos", cp)
+connect("CartesianGeneratorPos.CartesianTwistDes", "KUKACommander.generatedCartVel", cp)
+connect("KUKACommander.generatedCartOdom", "kuka_IK.CartesianPoseInput", cp)
+connect("kuka_IK.JointPositionDes", "KUKACommander.generatedJntState", cp)
+connect("KUKACommander.desiredJntPos", "FRIServer.desJntPos", cp)
+connect("KUKACommander.cartesianEvent", "CartesianGeneratorPos.events", cp)
+
 //stream("FRIServer.events", ros.topic("/fri/Event")) 
 
 stream("FTSensor.ForcePort", ros.topic("/iros/FTForce"))
 stream("FTSensor.TorquePort", ros.topic("/iros/FTTorque"))
 
-//Timer.configure()
-//Timer.start()
+
 
 FRIServer.configure()
 FTSensor.configure()
+nAxesGeneratorPos.configure()
+CartesianGeneratorPos.configure()
+kuka_IK.configure()
 KUKACommander.configure()
 KUKACommanderROS.configure()
 
 
 // Start the server
 FRIServer.start()
+FTSensor.start()
+nAxesGeneratorPos.start()
+CartesianGeneratorPos.start()
+kuka_IK.start()
 KUKACommander.start()
 KUKACommanderROS.start()
-FTSensor.start()
-
-// Wait until the connection is established and synchronized
-//Timer.wait(1, 1)

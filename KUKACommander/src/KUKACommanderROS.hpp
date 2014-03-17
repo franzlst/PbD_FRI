@@ -13,6 +13,9 @@
 #include "KUKACommander/set_cart_imp.h"
 #include "KUKACommander/set_jnt_imp.h"
 #include "KUKACommander/set_bool.h"
+#include "KUKACommander/get_bool.h"
+#include "KUKACommander/move_to_jnt_pos.h"
+#include "KUKACommander/move_to_cart_pos.h"
 
 #include <kuka_lwr_fri/friComm.h>
 #include <lwr_fri/typekit/Types.hpp>
@@ -62,6 +65,10 @@ namespace iros {
 		ros::ServiceServer setCartesianImpedanceService;
 		ros::ServiceServer setJointImpedanceService;
 		ros::ServiceServer activateGravityCompensationService;
+		ros::ServiceServer moveToJointPositionService;
+		ros::ServiceServer moveToCartesianPositionService;
+		ros::ServiceServer stopMovementsService;
+		ros::ServiceServer isMovingService;
 
 		OperationCaller<FRI_STATE(void)> getCurrentState;
 		OperationCaller<FRI_CTRL(void)> getCurrentControlMode;
@@ -72,6 +79,10 @@ namespace iros {
 		OperationCaller<void(geometry_msgs::Twist, geometry_msgs::Twist)> setCartesianImpedance;
 		OperationCaller<void(boost::array<float, 7>, boost::array<float, 7>)> setJointImpedance;
 		OperationCaller<void(bool)> activateGravityCompensation;
+		OperationCaller<bool(boost::array<double, 7>, double)> moveToJointPosition;
+		OperationCaller<bool(geometry_msgs::Pose, double)> moveToCartesianPosition;
+		OperationCaller<void(void)> stopMovements;
+		OperationCaller<bool(void)> isMoving;
 
 
 		bool getCurrentStateROS(KUKACommander::get_fri_state::Request&, KUKACommander::get_fri_state::Response&);
@@ -83,6 +94,10 @@ namespace iros {
 		bool setCartesianImpedanceROS(KUKACommander::set_cart_imp::Request&, KUKACommander::set_cart_imp::Response&);
 		bool setJointImpedanceROS(KUKACommander::set_jnt_imp::Request&, KUKACommander::set_jnt_imp::Response&);
 		bool activateGravityCompensationROS(KUKACommander::set_bool::Request&, KUKACommander::set_bool::Response&);
+		bool moveToJointPositionROS(KUKACommander::move_to_jnt_pos::Request&, KUKACommander::move_to_jnt_pos::Response&);
+		bool moveToCartesianPositionROS(KUKACommander::move_to_cart_pos::Request&, KUKACommander::move_to_cart_pos::Response&);
+		bool stopMovementsROS(std_srvs::Empty::Request&, std_srvs::Empty::Response&);
+		bool isMovingROS(KUKACommander::get_bool::Request&, KUKACommander::get_bool::Response&);
 	};
 
 	inline bool KUKACommanderROS::getCurrentStateROS(KUKACommander::get_fri_state::Request&, KUKACommander::get_fri_state::Response& response) {
@@ -133,9 +148,39 @@ namespace iros {
 		return true;
 	}
 
+	/*inline bool KUKACommanderROS::setCartesianImpedanceROS(KUKACommander::set_cart_imp::Request& request, KUKACommander::set_cart_imp::Response&) {
+		log(Debug) << "Call service setCartesianImpedance" << endlog();
+		setCartesianImpedance(request.stiffness, request.damping);
+		return true;
+	}*/
+
 	inline bool KUKACommanderROS::activateGravityCompensationROS(KUKACommander::set_bool::Request& request, KUKACommander::set_bool::Response&) {
 		log(Debug) << "Call service activateGravityCompensation" << endlog();
 		activateGravityCompensation(request.activate);
+		return true;
+	}
+
+	inline bool KUKACommanderROS::moveToJointPositionROS(KUKACommander::move_to_jnt_pos::Request& request, KUKACommander::move_to_jnt_pos::Response& response) {
+		log(Debug) << "Call service moveToJointPosition" << endlog();
+		response.success = moveToJointPosition(request.position, request.time);
+		return true;
+	}
+
+	inline bool KUKACommanderROS::moveToCartesianPositionROS(KUKACommander::move_to_cart_pos::Request& request, KUKACommander::move_to_cart_pos::Response& response) {
+		log(Debug) << "Call service moveToCartesianPosition" << endlog();
+		response.success = moveToCartesianPosition(request.position, request.time);
+		return true;
+	}
+
+	inline bool KUKACommanderROS::stopMovementsROS(std_srvs::Empty::Request&, std_srvs::Empty::Response&) {
+		log(Debug) << "Call service stopMovements" << endlog();
+		stopMovements();
+		return true;
+	}
+
+	inline bool KUKACommanderROS::isMovingROS(KUKACommander::get_bool::Request&, KUKACommander::get_bool::Response& response) {
+		log(Debug) << "Call service isMoving" << endlog();
+		response.answer = isMoving();
 		return true;
 	}
 

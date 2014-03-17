@@ -1,0 +1,30 @@
+/**************************************************************************
+ * OROCOS COMPONENT FOR KUKA KINEMATICS
+ * =====================================================================
+ *
+ * Authors:         Mohanarajah Gajamohan / Francisco Ramos
+ * Version:         v0.1
+ * Release date:    Friday, 13th May 2011
+ * Last update:     Friday, 13th May 2011
+ *
+ **************************************************************************/
+
+
+Elements of the release
+=======================
+
+KUKALWR_Kinematics
+------------------
+ *   This class defines the kinematic transformations on the KUKA LWR Robot
+ *
+ *   The Forward Kinematics transformation considers the whole 7 DOF of the
+ *   robot, while the Inverse Kinematics only calculates 6 Joints, setting
+ *   the extra DOF to zero. This allows us to obtain a closed-form solution
+ *   for the inverse kinematics.
+ *
+ *   The equations of this closed-form solution are based on the IK of an
+ *   anthropomorphic arm with a spherical wrist given in the book
+ *   "Robotics - Modelling, Planning and Control", by Siciliano et al. (2010)
+ *   Only one of the four possible solutions for the kinematic
+ *   chain is calculated. Specifically, the right-shoulder elbow-up one.
+

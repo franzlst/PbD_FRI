@@ -17,7 +17,9 @@ namespace iros {
 			stopCommunication("stopCommunication"),
 			setControlMode("setControlMode"),
 			setCartesianImpedance("setCartesianImpedance"), setJointImpedance("setJointImpedance"),
-			activateGravityCompensation("activateGravityCompensation") {
+			activateGravityCompensation("activateGravityCompensation"),
+			moveToJointPosition("moveToJointPosition"), moveToCartesianPosition("moveToCartesianPosition"),
+			stopMovements("stopMovements"), isMoving("isMoving") {
 		Logger::In in((this->getName()));
 
 
@@ -84,6 +86,10 @@ namespace iros {
 		this->requires("Commander")->addOperationCaller(setCartesianImpedance);
 		this->requires("Commander")->addOperationCaller(setJointImpedance);
 		this->requires("Commander")->addOperationCaller(activateGravityCompensation);
+		this->requires("Commander")->addOperationCaller(moveToJointPosition);
+		this->requires("Commander")->addOperationCaller(moveToCartesianPosition);
+		this->requires("Commander")->addOperationCaller(stopMovements);
+		this->requires("Commander")->addOperationCaller(isMoving);
 
 		this->requires("Commander")->connectTo(commander->provides("Commander"));
 
@@ -123,6 +129,10 @@ namespace iros {
 		setCartesianImpedanceService = ROSnode.advertiseService("setCartesianImpedance", &KUKACommanderROS::setCartesianImpedanceROS, this);
 		setJointImpedanceService = ROSnode.advertiseService("setJointImpedance", &KUKACommanderROS::setJointImpedanceROS, this);
 		activateGravityCompensationService = ROSnode.advertiseService("activateGravityCompensation", &KUKACommanderROS::activateGravityCompensationROS, this);
+		moveToJointPositionService = ROSnode.advertiseService("moveToJointPosition", &KUKACommanderROS::moveToJointPositionROS, this);
+		moveToCartesianPositionService = ROSnode.advertiseService("moveToCartesianPosition", &KUKACommanderROS::moveToCartesianPositionROS, this);
+		stopMovementsService = ROSnode.advertiseService("stopMovements", &KUKACommanderROS::stopMovementsROS, this);
+		isMovingService = ROSnode.advertiseService("isMoving", &KUKACommanderROS::isMovingROS, this);
 
 
 

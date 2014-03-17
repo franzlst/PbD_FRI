@@ -13,6 +13,7 @@
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Wrench.h>
+#include <nav_msgs/Odometry.h>
 
 #include <boost/array.hpp>
 
@@ -109,14 +110,40 @@ namespace iros {
 		 * @param time The time (in seconds), the movement shall take
 		 * @return False if there is an ongoing movement or an error occurs. True otherwise.
 		 */
-		bool moveTo(boost::array<double, 7> jointPos, double time);
+		bool moveToJointPosition(boost::array<double, 7> jointPos, double time);
+
+		/**
+		 * Moves the arm to CartPos
+		 * A trajectory in generated moving the arm within time to the desired Cartesian position CartPos.
+		 * If CartPos is not reachable within time (due to velocity limits), it is done as fast as possible.
+		 * @param CartPos The desired Cartesian position
+		 * @param time The time (in seconds), the movement shall take
+		 * @return False if there is an ongoing movement or an error occurs. True otherwise.
+		 */
+		bool moveToCartesianPosition(geometry_msgs::Pose CartPos, double time);
+
+		/**
+		 * Stop all ongoing movements
+		 * Stops both Cartesian and joint movements. Use @see isMoving to see whether the movement was stopped.
+		 */
+		void stopMovements();
+
+		/**
+		 * Checks, whether there is an ongoing movement
+		 * @return true when still moving, false otherwise
+		 */
+		bool isMoving();
 
 	  private:
 		void print_user_variables(tFriKrlData, bool from);
 		void print_var_from_krl();
 		void print_var_to_krl();
 
-		void n_axes_process_event(RTT::base::PortInterface* port_interface);
+		void n_axes_process_event(RTT::base::PortInterface*);
+		void cartesian_process_event(RTT::base::PortInterface*);
+
+		void merge_generated_cartesian(RTT::base::PortInterface*);
+		void convert_joint_state_to_pos(RTT::base::PortInterface*);
 
 		InputPort<tFriKrlData> port_from_krl;
 		OutputPort<tFriKrlData> port_to_krl;
@@ -132,6 +159,13 @@ namespace iros {
 		InputPort<geometry_msgs::Wrench> port_msrExtCartWrench;
 
 	    InputPort<string> port_nAxesEvent;
+	    InputPort<string> port_cartesianEvent;
+
+		InputPort<geometry_msgs::Pose>  port_generatedCartPos;
+		InputPort<geometry_msgs::Twist>  port_generatedCartVel;
+		OutputPort<nav_msgs::Odometry> port_generatedCartOdom;
+		InputPort<sensor_msgs::JointState> port_generatedJntState;
+		OutputPort<motion_control_msgs::JointPositions> port_desiredJntPos;
 
 		tFriKrlData data_from_krl;
 		tFriKrlData data_to_krl;
@@ -140,6 +174,7 @@ namespace iros {
 		tFriIntfState data_fri_state;
 
 		string data_nAxes_event;
+		string data_cartesian_event;
 
 		bool call_set_ctrl_mode;
 
@@ -147,9 +182,13 @@ namespace iros {
 		bool cart_is_moving;
 
 		TaskContext* n_axes_generator_pos_peer;
+		TaskContext* cartesian_generator_pos_peer;
 
 	    OperationCaller<bool(const vector<double>&, double)> nAxes_moveTo;
 	    OperationCaller<void(void)> nAxes_resetPosition;
+
+	    OperationCaller<bool(geometry_msgs::Pose, double)> cartesian_moveTo;
+	    OperationCaller<void(void)> cartesian_resetPosition;
 	};
 
 }
