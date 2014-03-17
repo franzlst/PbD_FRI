@@ -11,11 +11,13 @@ namespace iros {
 	using namespace std;
 
 	KUKACommanderROS::KUKACommanderROS(std::string const& name) : TaskContext(name),
-			callbackQueue(),
+			commander(), callbackQueue(),
 			getCurrentState("getCurrentState"), getCurrentControlMode("getCurrentControlMode"),
 			switchToMonitorState("switchToMonitorState"), switchToCommandState("switchToCommandState"),
 			stopCommunication("stopCommunication"),
-			setControlMode("setControlMode") {
+			setControlMode("setControlMode"),
+			setCartesianImpedance("setCartesianImpedance"), setJointImpedance("setJointImpedance"),
+			activateGravityCompensation("activateGravityCompensation") {
 		Logger::In in((this->getName()));
 
 
@@ -38,6 +40,10 @@ namespace iros {
 
 	bool KUKACommanderROS::startHook(){
 		Logger::In in((this->getName()));
+
+		if(!initROSInterface())
+			return false;
+
 		log(Debug) << "KUKACommanderROS started !" << endlog();
 		return true;
 	}
@@ -45,8 +51,9 @@ namespace iros {
 	void KUKACommanderROS::updateHook(){
 		Logger::In in((this->getName()));
 
+		callbackQueue.callAvailable();
 
-		log(Debug) << "KUKACommanderROS executes updateHook !" << endlog();
+		//log(Debug) << "KUKACommanderROS executes updateHook !" << endlog();
 	}
 
 	void KUKACommanderROS::stopHook() {
@@ -74,6 +81,9 @@ namespace iros {
 		this->requires("Commander")->addOperationCaller(switchToCommandState);
 		this->requires("Commander")->addOperationCaller(stopCommunication);
 		this->requires("Commander")->addOperationCaller(setControlMode);
+		this->requires("Commander")->addOperationCaller(setCartesianImpedance);
+		this->requires("Commander")->addOperationCaller(setJointImpedance);
+		this->requires("Commander")->addOperationCaller(activateGravityCompensation);
 
 		this->requires("Commander")->connectTo(commander->provides("Commander"));
 
@@ -110,6 +120,9 @@ namespace iros {
 		switchToCommandStateService = ROSnode.advertiseService("switchToCommandState", &KUKACommanderROS::switchToCommandStateROS, this);
 		stopCommunicationService = ROSnode.advertiseService("stopCommunication", &KUKACommanderROS::stopCommunicationROS, this);
 		setControlModeService = ROSnode.advertiseService("setControlMode", &KUKACommanderROS::setControlModeROS, this);
+		setCartesianImpedanceService = ROSnode.advertiseService("setCartesianImpedance", &KUKACommanderROS::setCartesianImpedanceROS, this);
+		setJointImpedanceService = ROSnode.advertiseService("setJointImpedance", &KUKACommanderROS::setJointImpedanceROS, this);
+		activateGravityCompensationService = ROSnode.advertiseService("activateGravityCompensation", &KUKACommanderROS::activateGravityCompensationROS, this);
 
 
 

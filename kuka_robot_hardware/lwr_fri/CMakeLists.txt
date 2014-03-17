@@ -48,17 +48,23 @@ if(RTNET_INCLUDE_DIR AND ${OROCOS_TARGET} STREQUAL "xenomai" )
   execute_process(COMMAND xeno-config --skin=posix --cflags OUTPUT_VARIABLE XENO_CFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
   execute_process(COMMAND xeno-config --skin=posix --ldflags OUTPUT_VARIABLE XENO_LDFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${XENO_CFLAGS}")
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${XENO_LDFLAGS}")
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${XENO_LDFLAGS} -lrtdm")
   orocos_component(lwr_fri src/FRIComponent.cpp) # ...you may add multiple source files
+  orocos_component(FRIServerRT src/FRIServerRT.cpp src/FRIServerRT.hpp)
+  target_link_libraries(FRIServerRT ${XENO_LDFLAGS} -lrtdm)
   orocos_add_compile_flags(lwr_fri ${XENO_CFLAGS})
   orocos_add_link_flags(lwr_fri ${XENO_LDFLAGS})
+  orocos_add_compile_flags(FRIServerRT ${XENO_CFLAGS})
+  #orocos_add_link_flags(FRIServerRT ${XENO_LDFLAGS} -lrtdm)
 else()
-  orocos_component(lwr_fri src/FRIComponent.cpp src/FRIRTNetComponent.cpp src/FRIRTNetComponent.hpp) # ...you may add multiple source files
+  orocos_component(lwr_fri src/FRIComponent.cpp src/FRIRTNetComponent.cpp src/FRIRTNetComponent.hpp ) # ...you may add multiple source files
+    
 endif()
 
 # Link with the ROS .msg typekit of this package
 # rtt-lwr_fri-typekit is the cmake target defined by ros_generate_rtt_typekit() above
 target_link_libraries(lwr_fri rtt-lwr_fri-typekit )
+target_link_libraries(FRIServerRT rtt-lwr_fri-typekit )
 
 # Generates the typekit which defines float32[7]
 orocos_typekit(lwr_fri_typekit lwr_fri-typekit.cpp)

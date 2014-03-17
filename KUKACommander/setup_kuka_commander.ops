@@ -11,59 +11,83 @@ import("ocl")
 import("lwr_fri")
 import("kuka_lwr_fri")
 import("FTSensor")
+import("naxes_motion_control")
 import("KUKACommander")
 
-loadComponent("FRIServer", "lwr_fri::FRIComponent")
+loadComponent("FRIServer", "lwr_fri::FRIServerRT")
 loadComponent("FTSensor", "iros::FTSensor")
+loadComponent("nAxesGeneratorPos", "MotionControl::nAxesGeneratorPos")
 loadComponent("KUKACommander", "iros::KUKACommander")
+loadComponent("KUKACommanderROS", "iros::KUKACommanderROS")
 
 // Used for wait statement
-loadComponent("Timer", "OCL::TimerComponent")
+//loadComponent("Timer", "OCL::TimerComponent")
+
+// HighestPriority = 99
+// LowestPriority = 1
 
 
 // Not periodic, highest priority, real-time scheduler
 setActivity("FRIServer", 0, HighestPriority, ORO_SCHED_RT)
 FRIServer.udp_port=49938
 
-// Run timer each 10ms with lowest priority
-setActivity("Timer", 0.01, LowestPriority, ORO_SCHED_RT)
-
-
 // 10000Hz, highest priority, real-time scheduler
 setActivity("FTSensor", 0.0001, HighestPriority, ORO_SCHED_RT)
+
+setActivity("nAxesGeneratorPos", 0.001, 80, ORO_SCHED_RT)
+
+
+// Run timer each 10ms with lowest priority
+//setActivity("Timer", 0.01, LowestPriority, ORO_SCHED_RT)
+setActivity("KUKACommander", 0, 70, ORO_SCHED_RT)
+setActivity("KUKACommanderROS", 0.01, 50, ORO_SCHED_RT)
+
+
+addPeer("KUKACommander", "nAxesGeneratorPos")
+addPeer("KUKACommanderROS", "KUKACommander")
 
 // Standart connection policy
 var ConnPolicy cp
 cp.type = DATA
 
-// Connect FRIServer (output) and Publisher ports (input)
+// Connection between FRIServer and KUKACommander
 connect("FRIServer.fromKRL", "KUKACommander.fromKRL", cp)
 connect("FRIServer.toKRL", "KUKACommander.toKRL", cp)
+
 connect("FRIServer.FRIState", "KUKACommander.FRIState", cp)
 connect("FRIServer.RobotState", "KUKACommander.RobotState", cp)
-connect("FRIServer.FriJointImpedance", "KUKACommander.JointImpedancePort", cp)
-connect("FRIServer.CartesianImpedanceCommand", "KUKACommander.CartImpedancePort", cp)
-connect("FRIServer.JointState", "KUKACommander.JointsPort", cp)
-connect("FRIServer.CartesianPosition", "KUKACommander.PosePort", cp)
-connect("FRIServer.CartesianWrench", "KUKACommander.ForcePort", cp)
 
+connect("FRIServer.desJntImpedance", "KUKACommander.desJntImpedance", cp)
+connect("FRIServer.desCartImpedance", "KUKACommander.desCartImpedance", cp)
 
-//stream("FRIServer.RobotState", ros.topic("/fri/FRIState")) 
+connect("FRIServer.msrJointState", "KUKACommander.msrJointState", cp)
+connect("FRIServer.msrCartPos", "KUKACommander.msrCartPos", cp)
+connect("FRIServer.msrExtCartWrench", "KUKACommander.msrExtCartWrench", cp)
+
+// Connections for nAxesGeneratorPos
+connect("FRIServer.msrJointState", "nAxesGeneratorPos.nAxesSensorPosition", cp)
+connect("FRIServer.desJntPos", "nAxesGeneratorPos.nAxesDesiredPosition", cp); // Either or?
+connect("FRIServer.desJntVel", "nAxesGeneratorPos.nAxesDesiredVelocity", cp); // Either or?
+connect("KUKACommander.nAxesEvent", "nAxesGeneratorPos.events", cp)
+
+//stream("FRIServer.events", ros.topic("/fri/Event")) 
 
 stream("FTSensor.ForcePort", ros.topic("/iros/FTForce"))
 stream("FTSensor.TorquePort", ros.topic("/iros/FTTorque"))
 
-Timer.configure()
-Timer.start()
+//Timer.configure()
+//Timer.start()
 
 FRIServer.configure()
 FTSensor.configure()
 KUKACommander.configure()
+KUKACommanderROS.configure()
 
 
 // Start the server
 FRIServer.start()
 KUKACommander.start()
+KUKACommanderROS.start()
 FTSensor.start()
 
 // Wait until the connection is established and synchronized

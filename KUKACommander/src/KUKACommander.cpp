@@ -18,13 +18,28 @@ namespace iros {
 		this->addPort("RobotState", port_robot_state).doc("Port containing the status of the robot");
 		this->addEventPort("FRIState", port_fri_state).doc("Port containing the status of the FRI communication");
 
+		this->addPort("desJntImpedance", port_desJntImpedance).doc("Desired joint impedance (stiffness and dampening)");
+		this->addPort("desCartImpedance", port_desCartImpedance).doc("Desired Cartesian impedance (stiffness and dampening)");
+
+		this->addPort("msrJointState", port_msrJointState).doc("Measured joint states (position/rotation)");
+		this->addPort("msrCartPos", port_msrCartPos).doc("Measured joint states (position/rotation)");
+		this->addPort("msrExtCartWrench", port_msrExtCartWrench).doc("Measured joint states (position/rotation)");
+
+		this->addEventPort("nAxesEvent", port_nAxesEvent, boost::bind(&KUKACommander::n_axes_process_event, this, _1)).doc("Retrieves events from nAxesGeneratorPos when a movement has started/stopped");
+
 		// Operations regarding the control of the KRC and grouped in the Commander service
 		provides("Commander")->addOperation("getCurrentState", &KUKACommander::getCurrentState, this, OwnThread).doc("get the current FRI state");
 		provides("Commander")->addOperation("getCurrentControlMode", &KUKACommander::getCurrentControlMode, this, OwnThread).doc("get the current control mode");
+
 		provides("Commander")->addOperation("switchToMonitorState", &KUKACommander::switchToMonitorState, this, OwnThread).doc("switch to monitor state: friStop()");
 		provides("Commander")->addOperation("switchToCommandState", &KUKACommander::switchToCommandState, this, OwnThread).doc("switch to command state: friStart()");
 		provides("Commander")->addOperation("stopCommunication", &KUKACommander::stopCommunication, this, OwnThread).doc("stop communication: friClose");
+
 		provides("Commander")->addOperation("setControlMode", &KUKACommander::setControlMode, this, OwnThread).doc("set control mode");
+		provides("Commander")->addOperation("activateGravityCompensation", &KUKACommander::activateGravityCompensation, this, OwnThread).doc("Switches to gravity compensation mode");
+
+		provides("Commander")->addOperation("setCartesianImpedance", &KUKACommander::setCartesianImpedance, this, OwnThread).doc("Sets the Cartesian impedance");
+		provides("Commander")->addOperation("setJointImpedance", &KUKACommander::setJointImpedance, this, OwnThread).doc("Sets the Joint impedance");
 
 		// Initialize variables with 0
 		data_to_krl.boolData = 0;
@@ -35,17 +50,27 @@ namespace iros {
 		// Set default controller mode
 		data_to_krl.intData[FRI_TO_KRL_CTRL_MODE] = FRI_CTRL_POSITION * 10;
 
+		nAxes_is_moving = false;
+		cart_is_moving = false;
+
 		log(Debug) << "KUKACommander constructed !" << endlog();
 	}
 
 	bool KUKACommander::configureHook(){
 		Logger::In in((this->getName()));
+
+
+		n_axes_generator_pos_peer = getPeer("nAxesGeneratorPos");
+		nAxes_moveTo = n_axes_generator_pos_peer->getOperation("moveTo");
+		nAxes_resetPosition = n_axes_generator_pos_peer->getOperation("resetPosition");
+
 		log(Debug) << "KUKACommander configured !" << endlog();
 		return true;
 	}
 
 	bool KUKACommander::startHook(){
 		Logger::In in((this->getName()));
+		port_to_krl.write(data_to_krl);
 		log(Debug) << "KUKACommander started !" << endlog();
 		return true;
 	}
@@ -60,13 +85,14 @@ namespace iros {
 
 
 		if(call_set_ctrl_mode)
-			//setControlMode();
+			setControlMode();
 
-		log(Debug) << "KUKACommander executes updateHook !" << endlog();
+		//log(Debug) << "KUKACommander executes updateHook !" << endlog();
 	}
 
 	void KUKACommander::stopHook() {
 		Logger::In in((this->getName()));
+		stopCommunication();
 		log(Debug) << "KUKACommander executes stopping !" << endlog();
 	}
 
@@ -92,16 +118,19 @@ namespace iros {
 	}
 
 	void KUKACommander::switchToMonitorState() {
+		log(Debug) << "Switching to Monitor state" << endlog();
 		data_to_krl.intData[FRI_TO_KRL_MON_CMD] = 20;
 		port_to_krl.write(data_to_krl);
 	}
 
 	void KUKACommander::switchToCommandState() {
+		log(Debug) << "Switching to Command state" << endlog();
 		data_to_krl.intData[FRI_TO_KRL_MON_CMD] = 10;
 		port_to_krl.write(data_to_krl);
 	}
 
 	void KUKACommander::stopCommunication() {
+		log(Debug) << "Stopping communication" << endlog();
 		// value must be copied, either 30 or 40
 		data_to_krl.intData[FRI_TO_KRL_MON_CMD] = data_from_krl.intData[FRI_FROM_KRL_COND];
 		port_to_krl.write(data_to_krl);
@@ -126,9 +155,10 @@ namespace iros {
 				return;
 			// Both state and command mode are the desired ones, we are done
 			} else {
-				log(Info) << "Set new control mode: " << mode << endlog();
+				log(Info) << "Successfully set new control mode: " << final_mode << endlog();
 				call_set_ctrl_mode = false;
 				final_state = FRI_STATE_MON; // default value
+				final_mode = FRI_CTRL_OTHER; // default value
 				return;
 			}
 		// Store the desired mode for later use
@@ -150,13 +180,13 @@ namespace iros {
 			switch(final_mode) {
 				case FRI_CTRL_POSITION:
 					data_to_krl.intData[FRI_TO_KRL_CTRL_MODE] = FRI_CTRL_POSITION * 10;
-					return;
+					break;
 				case FRI_CTRL_JNT_IMP:
 					data_to_krl.intData[FRI_TO_KRL_CTRL_MODE] = FRI_CTRL_JNT_IMP * 10;
-					return;
+					break;
 				case FRI_CTRL_CART_IMP:
 					data_to_krl.intData[FRI_TO_KRL_CTRL_MODE] = FRI_CTRL_CART_IMP * 10;
-					return;
+					break;
 				default:
 					log(Warning) << "Unknown control mode requested: " << final_mode << endlog();
 					call_set_ctrl_mode = false;
@@ -164,6 +194,80 @@ namespace iros {
 					final_state = getCurrentState();
 					return;
 			}
+			port_to_krl.write(data_to_krl);
+			return;
+		}
+	}
+
+	void KUKACommander::setCartesianImpedance(geometry_msgs::Twist stiffness, geometry_msgs::Twist damping) {
+		log(Debug) << "Changing Cartesian impedance" << endlog();
+		lwr_fri::CartesianImpedance impedance;
+		impedance.stiffness = stiffness;
+		impedance.damping = damping;
+		port_desCartImpedance.write(impedance);
+	}
+
+	void KUKACommander::setJointImpedance(boost::array<float, 7> stiffness, boost::array<float, 7> damping) {
+		log(Debug) << "Changing joint impedance" << endlog();
+		lwr_fri::FriJointImpedance impedance;
+		impedance.stiffness = stiffness;
+		impedance.damping = damping;
+		port_desJntImpedance.write(impedance);
+	}
+
+	void KUKACommander::activateGravityCompensation(bool joint) {
+		if(joint) {
+			boost::array<float, 7> stiffness = {{ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 }};
+			boost::array<float, 7> damping = {{ 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7 }};
+			setJointImpedance(stiffness, damping);
+			setControlMode(FRI_CTRL_JNT_IMP);
+		} else {
+			geometry_msgs::Vector3 stiff;
+			stiff.x = 0; stiff.y =  0; stiff.z = 0;
+			geometry_msgs::Twist stiffness;
+			stiffness.linear = stiff; stiffness.angular = stiff;
+			geometry_msgs::Vector3 damp;
+			damp.x = 0.7; damp.y = 0.7; damp.z = 0.7;
+			geometry_msgs::Twist damping;
+			damping.linear = damp; damping.angular = damp;
+			setCartesianImpedance(stiffness, damping);
+			setControlMode(FRI_CTRL_CART_IMP);
+		}
+	}
+
+	bool KUKACommander::moveTo(boost::array<double, 7> jointPos, double time) {
+		if(nAxes_is_moving || cart_is_moving)
+			return false;
+
+		return nAxes_moveTo(vector<double>(jointPos.begin(), jointPos.end()), time);
+	}
+
+	void KUKACommander::print_var_from_krl() {
+		print_user_variables(data_from_krl, true);
+	}
+
+	void KUKACommander::print_var_to_krl() {
+		print_user_variables(data_to_krl, false);
+	}
+
+	void KUKACommander::print_user_variables(tFriKrlData var, bool from) {
+		log(Info) << "=== Variables " << (from ? "from KRC" : "to KRC") << " ===" << endlog();
+		log(Info) << "Booleans: " << var.boolData << endlog();
+		log(Info) << "\tInteger \t Real " << endlog();
+		for(uint8_t i = 0; i < FRI_USER_SIZE; i++) {
+			log(Info) << (i + 1) << ":\t" << var.intData[i] << "\t\t" << var.realData[i] << endlog();
+		}
+	}
+
+	void KUKACommander::n_axes_process_event(RTT::base::PortInterface*) {
+		port_nAxesEvent.read(data_nAxes_event);
+		auto pos = data_nAxes_event.find_last_of("_") + 1; // extract event name, form is "e_"+name+"_move_[event]"
+		data_nAxes_event = data_nAxes_event.substr(pos, 20);
+
+		if(data_nAxes_event.compare("started") == 0) {
+			nAxes_is_moving = true;
+		} else if(data_nAxes_event.compare("finished") == 0) {
+			nAxes_is_moving = false;
 		}
 	}
 }

@@ -12,6 +12,7 @@
 #
 orocos_component(KUKACommander KUKACommander.hpp KUKACommander.cpp) # ...you may add multiple source files
 orocos_component(KUKACommanderROS KUKACommanderROS.hpp KUKACommanderROS.cpp) # ...you may add multiple source files
+
 #
 # You may add multiple orocos_component statements.
 
