@@ -16,6 +16,11 @@
 #include "KUKACommander/get_bool.h"
 #include "KUKACommander/move_to_jnt_pos.h"
 #include "KUKACommander/move_to_cart_pos.h"
+#include "KUKACommander/cart_lin_motion.h"
+#include "KUKACommander/cart_ptp_motion.h"
+#include "KUKACommander/joint_lin_motion.h"
+#include "KUKACommander/joint_ptp_motion.h"
+#include "KUKACommander/get_quat_from_rpy.h"
 
 #include <kuka_lwr_fri/friComm.h>
 #include <lwr_fri/typekit/Types.hpp>
@@ -69,6 +74,11 @@ namespace iros {
 		ros::ServiceServer moveToCartesianPositionService;
 		ros::ServiceServer stopMovementsService;
 		ros::ServiceServer isMovingService;
+		ros::ServiceServer jointPTPMotionService;
+		ros::ServiceServer CartesianLINMotionService;
+		ros::ServiceServer CartesianPTPMotionService;
+		ros::ServiceServer getQuaternionFromRPYService;
+
 
 		OperationCaller<FRI_STATE(void)> getCurrentState;
 		OperationCaller<FRI_CTRL(void)> getCurrentControlMode;
@@ -81,8 +91,13 @@ namespace iros {
 		OperationCaller<void(bool)> activateGravityCompensation;
 		OperationCaller<bool(boost::array<double, 7>, double)> moveToJointPosition;
 		OperationCaller<bool(geometry_msgs::Pose, double)> moveToCartesianPosition;
-		OperationCaller<void(void)> stopMovements;
+		OperationCaller<bool(void)> stopMovements;
 		OperationCaller<bool(void)> isMoving;
+		OperationCaller<bool(boost::array<double, 7> jointPos, uint8_t speed)> jointPTPMotion;
+		OperationCaller<bool(geometry_msgs::Pose CartPose, double speed)> CartesianLINMotion;
+		OperationCaller<bool(geometry_msgs::Pose CartPose, uint8_t speed)> CartesianPTPMotion;
+		OperationCaller<geometry_msgs::Quaternion(double, double, double)> getQuaternionFromRPY;
+
 
 
 		bool getCurrentStateROS(KUKACommander::get_fri_state::Request&, KUKACommander::get_fri_state::Response&);
@@ -96,8 +111,12 @@ namespace iros {
 		bool activateGravityCompensationROS(KUKACommander::set_bool::Request&, KUKACommander::set_bool::Response&);
 		bool moveToJointPositionROS(KUKACommander::move_to_jnt_pos::Request&, KUKACommander::move_to_jnt_pos::Response&);
 		bool moveToCartesianPositionROS(KUKACommander::move_to_cart_pos::Request&, KUKACommander::move_to_cart_pos::Response&);
-		bool stopMovementsROS(std_srvs::Empty::Request&, std_srvs::Empty::Response&);
+		bool stopMovementsROS(KUKACommander::get_bool::Request&, KUKACommander::get_bool::Response&);
 		bool isMovingROS(KUKACommander::get_bool::Request&, KUKACommander::get_bool::Response&);
+		bool jointPTPMotionROS(KUKACommander::joint_ptp_motion::Request&, KUKACommander::joint_ptp_motion::Response&);
+		bool CartesianLINMotionROS(KUKACommander::cart_lin_motion::Request&, KUKACommander::cart_lin_motion::Response&);
+		bool CartesianPTPMotionROS(KUKACommander::cart_ptp_motion::Request&, KUKACommander::cart_ptp_motion::Response&);
+		bool getQuaternionFromRPYROS(KUKACommander::get_quat_from_rpy::Request&, KUKACommander::get_quat_from_rpy::Response&);
 	};
 
 	inline bool KUKACommanderROS::getCurrentStateROS(KUKACommander::get_fri_state::Request&, KUKACommander::get_fri_state::Response& response) {
@@ -148,12 +167,6 @@ namespace iros {
 		return true;
 	}
 
-	/*inline bool KUKACommanderROS::setCartesianImpedanceROS(KUKACommander::set_cart_imp::Request& request, KUKACommander::set_cart_imp::Response&) {
-		log(Debug) << "Call service setCartesianImpedance" << endlog();
-		setCartesianImpedance(request.stiffness, request.damping);
-		return true;
-	}*/
-
 	inline bool KUKACommanderROS::activateGravityCompensationROS(KUKACommander::set_bool::Request& request, KUKACommander::set_bool::Response&) {
 		log(Debug) << "Call service activateGravityCompensation" << endlog();
 		activateGravityCompensation(request.activate);
@@ -172,15 +185,39 @@ namespace iros {
 		return true;
 	}
 
-	inline bool KUKACommanderROS::stopMovementsROS(std_srvs::Empty::Request&, std_srvs::Empty::Response&) {
+	inline bool KUKACommanderROS::stopMovementsROS(KUKACommander::get_bool::Request&, KUKACommander::get_bool::Response& response) {
 		log(Debug) << "Call service stopMovements" << endlog();
-		stopMovements();
+		response.answer = stopMovements();
 		return true;
 	}
 
 	inline bool KUKACommanderROS::isMovingROS(KUKACommander::get_bool::Request&, KUKACommander::get_bool::Response& response) {
 		log(Debug) << "Call service isMoving" << endlog();
 		response.answer = isMoving();
+		return true;
+	}
+
+	inline bool KUKACommanderROS::jointPTPMotionROS(KUKACommander::joint_ptp_motion::Request& request, KUKACommander::joint_ptp_motion::Response& response) {
+		log(Debug) << "Call service jointPTPMotion" << endlog();
+		response.success = jointPTPMotion(request.position, request.speed);
+		return true;
+	}
+
+	inline bool KUKACommanderROS::CartesianLINMotionROS(KUKACommander::cart_lin_motion::Request& request, KUKACommander::cart_lin_motion::Response& response) {
+		log(Debug) << "Call service CartesianLINMotion" << endlog();
+		response.success = CartesianLINMotion(request.position, request.speed);
+		return true;
+	}
+
+	inline bool KUKACommanderROS::CartesianPTPMotionROS(KUKACommander::cart_ptp_motion::Request& request, KUKACommander::cart_ptp_motion::Response& response) {
+		log(Debug) << "Call service CartesiantPTPMotion" << endlog();
+		response.success = CartesianPTPMotion(request.position, request.speed);
+		return true;
+	}
+
+	inline bool KUKACommanderROS::getQuaternionFromRPYROS(KUKACommander::get_quat_from_rpy::Request& request, KUKACommander::get_quat_from_rpy::Response& response) {
+		log(Debug) << "Call service getQuaternionFromRPY" << endlog();
+		response.quaternion = getQuaternionFromRPY(request.r, request.p, request.y);
 		return true;
 	}
 

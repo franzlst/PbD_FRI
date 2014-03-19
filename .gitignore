@@ -130,10 +130,9 @@ qtcreator-*
 
 # Catkin custom files
 CATKIN_IGNORE
-/catkin_generated/
-/catkin_generated/installspace/
-/catkin_generated/installspace/*
-/devel/
+**/catkin/**
+**/catkin_generated/**
+**/devel/**
 
 ## OS
 

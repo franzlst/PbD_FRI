@@ -87,7 +87,10 @@ connect("CartesianGeneratorPos.CartesianPoseDes", "KUKACommander.generatedCartPo
 connect("CartesianGeneratorPos.CartesianTwistDes", "KUKACommander.generatedCartVel", cp)
 connect("KUKACommander.generatedCartOdom", "kuka_IK.CartesianPoseInput", cp)
 connect("kuka_IK.JointPositionDes", "KUKACommander.generatedJntState", cp)
+connect("FRIServer.msrCartPos", "kuka_IK.msrCartPosPort", cp);
+connect("FRIServer.msrVecJointState", "kuka_IK.JointPositionMsr", cp)
 connect("KUKACommander.desiredJntPos", "FRIServer.desJntPos", cp)
+connect("KUKACommander.desiredJntVel", "FRIServer.desJntVel", cp)
 connect("KUKACommander.cartesianEvent", "CartesianGeneratorPos.events", cp)
 
 //stream("FRIServer.events", ros.topic("/fri/Event")) 
@@ -96,7 +99,7 @@ stream("FTSensor.ForcePort", ros.topic("/iros/FTForce"))
 stream("FTSensor.TorquePort", ros.topic("/iros/FTTorque"))
 
 
-
+// call configure
 FRIServer.configure()
 FTSensor.configure()
 nAxesGeneratorPos.configure()

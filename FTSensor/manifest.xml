@@ -1,9 +1,9 @@
 <package>
-    <description brief="Orocos FTSensor Component package">
-        This package contains the components of the FTSensor package
+    <description brief="Orocos real-time interface for a F/T-sensor">
+		The RTnet driver is utilized for a F/T-sensor connected to an ethernet port, communicating via UDP.
+    	This component reads from the sensor, parses the values and publishes them to distinct ports.
     </description>
-    <!--NOTE: set the license and author before you publish this code-->
-    <license></license>
+    <license>MIT</license>
     <author>Franz Steinmetz</author>
     <depend package="rtt" />
     <depend package="rtt_geometry_msgs"/>

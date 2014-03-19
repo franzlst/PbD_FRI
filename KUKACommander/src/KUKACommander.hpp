@@ -22,6 +22,23 @@
 #define FRI_FROM_KRL_COND		14
 #define FRI_FROM_KRL_STATE		15
 
+// Constants for PTP and LIN motions
+#define FRI_FROM_FRL_LINPTP		0
+#define FRI_TO_KRL_MOTION_TYPE	12
+#define FRI_TO_KRL_TARGET_TYPE	13
+#define FRI_TO_KRL_SPEED		7
+#define FRI_PTP_MOTION			1
+#define FRI_LIN_MOTION			2
+#define FRI_E6AXIS				1
+#define FRI_FRAME				2
+
+// Min and max LIN speed in m/s
+#define FRI_MIN_LIN_SPEED	0.05
+#define FRI_MAX_LIN_SPEED	2.0
+// Min and max PTP speed in %
+#define FRI_MIN_PTP_SPEED	1
+#define FRI_MAX_PTP_SPEED	100
+
 namespace iros {
 
 	using namespace RTT;
@@ -120,19 +137,27 @@ namespace iros {
 		 * @param time The time (in seconds), the movement shall take
 		 * @return False if there is an ongoing movement or an error occurs. True otherwise.
 		 */
-		bool moveToCartesianPosition(geometry_msgs::Pose CartPos, double time);
+		bool moveToCartesianPosition(geometry_msgs::Pose CartPose, double time);
 
 		/**
 		 * Stop all ongoing movements
 		 * Stops both Cartesian and joint movements. Use @see isMoving to see whether the movement was stopped.
+		 * @note LIN and PTP motions cannot be stopped, in this case false is returned
+		 * @return true if there is no motion or the movement can be stopped, false elsewise
 		 */
-		void stopMovements();
+		bool stopMovements();
 
 		/**
 		 * Checks, whether there is an ongoing movement
 		 * @return true when still moving, false otherwise
 		 */
 		bool isMoving();
+
+		bool jointPTPMotion(boost::array<double, 7> jointPos, uint8_t speed);
+		bool CartesianLINMotion(geometry_msgs::Pose CartPose, double speed);
+		bool CartesianPTPMotion(geometry_msgs::Pose CartPose, uint8_t speed);
+
+		geometry_msgs::Quaternion getQuaternionFromRPY(double r, double p, double y);
 
 	  private:
 		void print_user_variables(tFriKrlData, bool from);
@@ -144,6 +169,10 @@ namespace iros {
 
 		void merge_generated_cartesian(RTT::base::PortInterface*);
 		void convert_joint_state_to_pos(RTT::base::PortInterface*);
+
+		bool is_moving_LINPTP();
+
+		void reset_LINPTP_motion_variables();
 
 		InputPort<tFriKrlData> port_from_krl;
 		OutputPort<tFriKrlData> port_to_krl;
@@ -166,6 +195,7 @@ namespace iros {
 		OutputPort<nav_msgs::Odometry> port_generatedCartOdom;
 		InputPort<sensor_msgs::JointState> port_generatedJntState;
 		OutputPort<motion_control_msgs::JointPositions> port_desiredJntPos;
+		OutputPort<motion_control_msgs::JointVelocities> port_desiredJntVel;
 
 		tFriKrlData data_from_krl;
 		tFriKrlData data_to_krl;

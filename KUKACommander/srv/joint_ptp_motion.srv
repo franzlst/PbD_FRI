@@ -1,0 +1,4 @@
+float64[7] position
+uint8 speed
+---
+bool success

@@ -322,6 +322,7 @@ namespace MotionControl
         v_d_port.write( v_d );
         is_moving = false;
         isTrajMoving = false;
+	event_port.write(move_finished_event);
     }
 
     void nAxesGeneratorPos::pause()

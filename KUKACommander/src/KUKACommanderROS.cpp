@@ -19,7 +19,10 @@ namespace iros {
 			setCartesianImpedance("setCartesianImpedance"), setJointImpedance("setJointImpedance"),
 			activateGravityCompensation("activateGravityCompensation"),
 			moveToJointPosition("moveToJointPosition"), moveToCartesianPosition("moveToCartesianPosition"),
-			stopMovements("stopMovements"), isMoving("isMoving") {
+			stopMovements("stopMovements"), isMoving("isMoving"),
+			jointPTPMotion("jointPTPMotion"),
+			CartesianLINMotion("CartesianLINMotion"), CartesianPTPMotion("CartesianPTPMotion"),
+			getQuaternionFromRPY("getQuaternionFromRPY") {
 		Logger::In in((this->getName()));
 
 
@@ -90,6 +93,10 @@ namespace iros {
 		this->requires("Commander")->addOperationCaller(moveToCartesianPosition);
 		this->requires("Commander")->addOperationCaller(stopMovements);
 		this->requires("Commander")->addOperationCaller(isMoving);
+		this->requires("Commander")->addOperationCaller(jointPTPMotion);
+		this->requires("Commander")->addOperationCaller(CartesianLINMotion);
+		this->requires("Commander")->addOperationCaller(CartesianPTPMotion);
+		this->requires("Commander")->addOperationCaller(getQuaternionFromRPY);
 
 		this->requires("Commander")->connectTo(commander->provides("Commander"));
 
@@ -133,6 +140,10 @@ namespace iros {
 		moveToCartesianPositionService = ROSnode.advertiseService("moveToCartesianPosition", &KUKACommanderROS::moveToCartesianPositionROS, this);
 		stopMovementsService = ROSnode.advertiseService("stopMovements", &KUKACommanderROS::stopMovementsROS, this);
 		isMovingService = ROSnode.advertiseService("isMoving", &KUKACommanderROS::isMovingROS, this);
+		jointPTPMotionService = ROSnode.advertiseService("jointPTPMotion", &KUKACommanderROS::jointPTPMotionROS, this);
+		CartesianLINMotionService = ROSnode.advertiseService("CartesianLINMotion", &KUKACommanderROS::CartesianLINMotionROS, this);
+		CartesianPTPMotionService = ROSnode.advertiseService("CartesianPTPMotion", &KUKACommanderROS::CartesianPTPMotionROS, this);
+		getQuaternionFromRPYService = ROSnode.advertiseService("getQuaternionFromRPY", &KUKACommanderROS::getQuaternionFromRPYROS, this);
 
 
 

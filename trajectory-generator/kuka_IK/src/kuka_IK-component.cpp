@@ -26,6 +26,7 @@
  ***************************************************************************/
 #include "kuka_IK-component.hpp"
 #include <ocl/Component.hpp>
+#include <rtt/Logger.hpp>
 
 ORO_CREATE_COMPONENT(kuka_IK::kuka_IK)
 namespace kuka_IK{
@@ -59,16 +60,17 @@ namespace kuka_IK{
     }
 
     bool kuka_IK::cartPosInputHandle(RTT::base::PortInterface* portInterface){
+	Logger::In in((this->getName()));
     	input_cartPosPort.read(commandedState);
-
     	KDL::ChainIkSolverVel_pinv ikvelsolver = KDL::ChainIkSolverVel_pinv(robotChain);
 
     	// Read out the robot joint position
     	msr_jntPosPort.read(jntPos);
     	KDL::JntArray q_init,qdot_out;
     	Eigen::Matrix<double, 7, 1> vec7d;
-    	for(int i=0; i< 7; i++)
+    	for(int i=0; i< 7; i++) {
     		vec7d[i] = jntPos[i];
+	}
 
     	q_init.data = vec7d;
 
@@ -89,9 +91,10 @@ namespace kuka_IK{
     	//if (!(KukaLWR_Kinematics::ikSolver(jntPos, commandedState.pose.pose, commndedPoseJntPos))){
     	if (!(KukaLWR_Kinematics::ikSolverIterative7DOF(jntPos, commandedState.pose.pose, commndedPoseJntPos))){
     	//if (!(KukaLWR_Kinematics::ikSolverAnalytical7DOF(commandedState.pose.pose, commndedPoseJntPos))){
-    		cout << "lastCommandedPose cannot be achieved" << endl;
-    		for(int i = 0; i < 7; i++)  std::cout << commndedPoseJntPos[i] << " " ;
-    		std::cout << std::endl;
+//    		cout << "lastCommandedPose cannot be achieved" << endl;
+    		log(Error) << "lastCommandedPose cannot be achieved" << endlog();
+    		for(int i = 0; i < 7; i++)  log(Error) << commndedPoseJntPos[i] << " " ;
+    		log(Error) << endlog();
     	}
         
         sensor_msgs::JointState tmpJntState;

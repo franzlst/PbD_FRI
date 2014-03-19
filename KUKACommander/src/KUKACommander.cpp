@@ -2,6 +2,9 @@
 #include <rtt/Component.hpp>
 #include <iostream>
 
+#include <kdl/frames.hpp>
+#include <tf_conversions/tf_kdl.h>
+
 namespace iros {
 
 	using namespace RTT;
@@ -34,6 +37,7 @@ namespace iros {
 
 		this->addEventPort("generatedJntState", port_generatedJntState, boost::bind(&KUKACommander::convert_joint_state_to_pos, this, _1)).doc("Retrieves generated desired joint state");
 		this->addPort("desiredJntPos", port_desiredJntPos).doc("Converted state to joint position");
+		this->addPort("desiredJntVel", port_desiredJntVel).doc("Converted state to joint velocity");
 
 		// Operations regarding the control of the KRC and grouped in the Commander service
 		provides("Commander")->addOperation("getCurrentState", &KUKACommander::getCurrentState, this, OwnThread).doc("get the current FRI state");
@@ -54,6 +58,12 @@ namespace iros {
 
 		provides("Commander")->addOperation("stopMovements", &KUKACommander::stopMovements, this, OwnThread).doc("Stops all movements");
 		provides("Commander")->addOperation("isMoving", &KUKACommander::isMoving, this, OwnThread).doc("Checks whether the robot is moving");
+
+		provides("Commander")->addOperation("jointPTPMotion", &KUKACommander::jointPTPMotion, this, OwnThread).doc("Perform PTP motion in joint space");
+		provides("Commander")->addOperation("CartesianLINMotion", &KUKACommander::CartesianLINMotion, this, OwnThread).doc("Perform LIN motion in Cartesian space");
+		provides("Commander")->addOperation("CartesianPTPMotion", &KUKACommander::CartesianPTPMotion, this, OwnThread).doc("Perform PTP motion in Cartesian space");
+
+		provides("Commander")->addOperation("getQuaternionFromRPY", &KUKACommander::getQuaternionFromRPY, this, OwnThread).doc("Returns the quaternion corresponding to the three Euler angles");
 
 		// Initialize variables with 0
 		data_to_krl.boolData = 0;
@@ -107,6 +117,8 @@ namespace iros {
 
 		port_from_krl.read(data_from_krl);
 
+		if(is_moving_LINPTP() && data_to_krl.intData[FRI_TO_KRL_MOTION_TYPE] != 0)
+			reset_LINPTP_motion_variables();
 
 		if(call_set_ctrl_mode)
 			setControlMode();
@@ -263,6 +275,12 @@ namespace iros {
 		if(nAxes_is_moving || cart_is_moving)
 			return false;
 
+		if(getCurrentControlMode() == FRI_CTRL_CART_IMP)
+			return false;
+
+		if(getCurrentState() == FRI_STATE_MON)
+			return false;
+
 		return nAxes_moveTo(vector<double>(jointPos.begin(), jointPos.end()), time);
 	}
 
@@ -270,20 +288,131 @@ namespace iros {
 		if(nAxes_is_moving || cart_is_moving)
 			return false;
 
-		log(Debug) << "move to Cartesian pos" << endlog();
+		if(getCurrentControlMode() == FRI_CTRL_CART_IMP)
+			return false;
+
+		if(getCurrentState() == FRI_STATE_MON)
+			return false;
+
 		return cartesian_moveTo(CartPos, time);
 	}
 
-	void KUKACommander::stopMovements() {
+	bool KUKACommander::stopMovements() {
+		if(is_moving_LINPTP())
+			return false;
+
 		if(nAxes_is_moving)
 			nAxes_resetPosition();
 		else if(cart_is_moving)
 			cartesian_resetPosition();
+
+		return true;
 	}
 
 	bool KUKACommander::isMoving() {
-		return nAxes_is_moving || cart_is_moving;
+		return nAxes_is_moving || cart_is_moving || is_moving_LINPTP();
 	}
+
+	bool KUKACommander::jointPTPMotion(boost::array<double, 7> jointPos, uint8_t speed) {
+		if(isMoving())
+			return false;
+
+		if(speed < FRI_MIN_PTP_SPEED)
+			speed = FRI_MIN_LIN_SPEED;
+		else if(speed > FRI_MAX_LIN_SPEED)
+			speed = FRI_MAX_LIN_SPEED;
+
+		data_to_krl.intData[FRI_TO_KRL_MOTION_TYPE] = FRI_PTP_MOTION;
+		data_to_krl.intData[FRI_TO_KRL_TARGET_TYPE] = FRI_E6AXIS;
+		for(uint8_t i = 0; i < LBR_MNJ; i++) {
+			data_to_krl.realData[i] = jointPos[i];
+		}
+		data_to_krl.intData[FRI_TO_KRL_SPEED] = speed;
+
+		port_to_krl.write(data_to_krl);
+		return true;
+	}
+
+	bool KUKACommander::CartesianLINMotion(geometry_msgs::Pose CartPose, double speed) {
+		if(isMoving())
+			return false;
+
+		if(speed < FRI_MIN_LIN_SPEED)
+			speed = FRI_MIN_LIN_SPEED;
+		else if(speed > FRI_MAX_LIN_SPEED)
+			speed = FRI_MAX_LIN_SPEED;
+
+		data_to_krl.intData[FRI_TO_KRL_MOTION_TYPE] = FRI_LIN_MOTION;
+		data_to_krl.intData[FRI_TO_KRL_TARGET_TYPE] = FRI_FRAME;
+
+		KDL::Frame tmp_frame;
+		double A, B, C;
+		tf::poseMsgToKDL(CartPose, tmp_frame);
+		tmp_frame.M.GetRPY(C, B, A);
+
+		data_to_krl.realData[0] = CartPose.position.x * 1000;
+		data_to_krl.realData[1] = CartPose.position.y * 1000;
+		data_to_krl.realData[2] = CartPose.position.z * 1000;
+		data_to_krl.realData[3] = A / M_PI * 180;
+		data_to_krl.realData[4] = B / M_PI * 180;
+		data_to_krl.realData[5] = C / M_PI * 180;
+
+		log(Debug) << "=== Cartesian LIN motion" << endlog();
+		log(Debug) << "Position:    X:" << CartPose.position.x * 1000 << " Y:" << CartPose.position.y * 1000 << " Z:" << CartPose.position.z * 1000 << endlog();
+		log(Debug) << "Orientation: A:" << A / M_PI * 180 << " B:" << B / M_PI * 180 << " C:" << C / M_PI * 180 << endlog();
+
+		data_to_krl.realData[FRI_TO_KRL_SPEED] = speed;
+
+		port_to_krl.write(data_to_krl);
+		return true;
+	}
+
+	bool KUKACommander::CartesianPTPMotion(geometry_msgs::Pose CartPose, uint8_t speed) {
+		if(isMoving())
+			return false;
+
+		if(speed < FRI_MIN_PTP_SPEED)
+			speed = FRI_MIN_LIN_SPEED;
+		else if(speed > FRI_MAX_LIN_SPEED)
+			speed = FRI_MAX_LIN_SPEED;
+
+		data_to_krl.intData[FRI_TO_KRL_MOTION_TYPE] = FRI_PTP_MOTION;
+		data_to_krl.intData[FRI_TO_KRL_TARGET_TYPE] = FRI_FRAME;
+
+		KDL::Frame tmp_frame;
+		double A, B, C;
+		tf::poseMsgToKDL(CartPose, tmp_frame);
+		tmp_frame.M.GetRPY(C, B, A);
+
+		data_to_krl.realData[0] = CartPose.position.x * 1000;
+		data_to_krl.realData[1] = CartPose.position.y * 1000;
+		data_to_krl.realData[2] = CartPose.position.z * 1000;
+		data_to_krl.realData[3] = A / M_PI * 180;
+		data_to_krl.realData[4] = B / M_PI * 180;
+		data_to_krl.realData[5] = C / M_PI * 180;
+
+		log(Debug) << "=== Cartesian PTP motion" << endlog();
+		log(Debug) << "Position:    X:" << CartPose.position.x * 1000 << " Y:" << CartPose.position.y * 1000 << " Z:" << CartPose.position.z * 1000 << endlog();
+		log(Debug) << "Orientation: A:" << A / M_PI * 180 << " B:" << B / M_PI * 180 << " C:" << C / M_PI * 180 << endlog();
+
+		data_to_krl.intData[FRI_TO_KRL_SPEED] = speed;
+
+		port_to_krl.write(data_to_krl);
+		return true;
+	}
+
+	geometry_msgs::Quaternion KUKACommander::getQuaternionFromRPY(double r, double p, double y) {
+		geometry_msgs::Quaternion quat;
+		KDL::Rotation rot = KDL::Rotation::RPY(r, p, y);
+		rot.GetQuaternion(quat.x, quat.y, quat.z, quat.w);
+		return quat;
+	}
+
+
+	/* =================================
+	 * 			Private members
+	 * =================================
+	 */
 
 	void KUKACommander::print_var_from_krl() {
 		print_user_variables(data_from_krl, true);
@@ -343,10 +472,65 @@ namespace iros {
 	void KUKACommander::convert_joint_state_to_pos(RTT::base::PortInterface*) {
 		sensor_msgs::JointState tmp_state;
 		motion_control_msgs::JointPositions tmp_pos;
+		motion_control_msgs::JointVelocities tmp_vel;
 		if(port_generatedJntState.read(tmp_state) == NewData) {
 			tmp_pos.positions = tmp_state.position;
-			port_desiredJntPos.write(tmp_pos);
+			tmp_vel.velocities = tmp_state.velocity;
+
+			if(true) {
+				geometry_msgs::Pose tmp_cur_pose;
+				geometry_msgs::Pose tmp_des_pose;
+				sensor_msgs::JointState tmp_cur_jnt;
+				port_msrCartPos.read(tmp_cur_pose);
+				port_generatedCartPos.read(tmp_des_pose);
+				port_msrJointState.read(tmp_cur_jnt);
+
+				bool deviation = false;
+				/*for(int i = 0; i < LBR_MNJ; i++) {
+					if(fabs(tmp_cur_jnt.position[i] - tmp_pos.positions[i]) > 0.05) {
+						log(Error) << "Calculated joint positions deviate too much" << endlog();
+						deviation = true;
+						break;
+					}
+				}*/
+				if(!deviation) {
+					port_desiredJntPos.write(tmp_pos);
+					port_desiredJntVel.write(tmp_vel);
+				}
+
+				/*double A, B, C;
+				KDL::Frame tmp_frame;
+				tf::poseMsgToKDL(tmp_cur_pose, tmp_frame);
+				tmp_frame.M.GetRPY(C, B, A);
+				log(Info) << "=== Cartesian Movement ===" << endlog();
+				log(Info) << "Current Cart Pose position:    " << tmp_cur_pose.position.x << " " << tmp_cur_pose.position.y << " " << tmp_cur_pose.position.z << endlog();
+				log(Info) << "Current Cart Pose orientation: " << A / M_PI * 180 << " " << B / M_PI * 180 << " " << C / M_PI * 180 << endlog();
+				tf::poseMsgToKDL(tmp_des_pose, tmp_frame);
+				tmp_frame.M.GetRPY(C, B, A);
+				log(Info) << "Desired Cart Pose position:    " << tmp_des_pose.position.x << " " << tmp_des_pose.position.y << " " << tmp_des_pose.position.z << endlog();
+				log(Info) << "Desired Cart Pose orientation: " << A / M_PI * 180 << " " << B / M_PI * 180 << " " << C / M_PI * 180 << endlog();
+				log(Info) << "Current Jnt state: " << tmp_cur_jnt.position[0] << " " << tmp_cur_jnt.position[1] << " " << tmp_cur_jnt.position[2] << " " << tmp_cur_jnt.position[3] << " " << tmp_cur_jnt.position[4] << " " << tmp_cur_jnt.position[5] << " " << tmp_cur_jnt.position[6] << endlog();
+				log(Info) << "Desired Jnt state: " << tmp_pos.positions[0] << " " << tmp_pos.positions[1] << " " << tmp_pos.positions[2] << " " << tmp_pos.positions[3] << " " << tmp_pos.positions[4] << " " << tmp_pos.positions[5] << " " << tmp_pos.positions[6] << endlog();*/
+			}
 		}
+	}
+
+	bool KUKACommander::is_moving_LINPTP() {
+		if(data_from_krl.boolData)
+			log(Debug) << "boolData: " << data_from_krl.boolData << " Result: " << ((data_from_krl.boolData & (1 << FRI_FROM_FRL_LINPTP)) ? "1" : "0") << endlog();
+		return data_from_krl.boolData & (1 << FRI_FROM_FRL_LINPTP);
+	}
+
+	void KUKACommander::reset_LINPTP_motion_variables() {
+		data_to_krl.intData[FRI_TO_KRL_MOTION_TYPE] = 0;
+		data_to_krl.intData[FRI_TO_KRL_TARGET_TYPE] = 0;
+		for(uint8_t i = 0; i < LBR_MNJ; i++) {
+			data_to_krl.realData[i] = 0;
+		}
+		data_to_krl.intData[FRI_TO_KRL_SPEED] = 0;
+		data_to_krl.realData[FRI_TO_KRL_SPEED] = 0;
+
+		port_to_krl.write(data_to_krl);
 	}
 }
 

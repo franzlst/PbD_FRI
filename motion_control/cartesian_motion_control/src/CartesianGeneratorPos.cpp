@@ -197,6 +197,7 @@ void CartesianGeneratorPos::resetPosition()
 	m_velocity_desi_port.write(twist);
 
 	m_is_moving = false;
+	event_port.write(move_finished_event);
 }
 
 } //namespace

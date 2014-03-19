@@ -70,8 +70,9 @@ private:
 	tFriMsrData m_msr_data;
 	tFriCmdData m_cmd_data;
 
-	sensor_msgs::JointState m_jointStates;
+	sensor_msgs::JointState m_jointState;
 	lwr_fri::FriJointState m_friJointState;
+	std::vector<double> m_vecJointState;
 
 	motion_control_msgs::JointPositions m_jntPos;
 	motion_control_msgs::JointVelocities m_jntVel;
@@ -110,6 +111,7 @@ private:
 	 */
 	OutputPort<sensor_msgs::JointState> m_jointStatePort;
 	OutputPort<lwr_fri::FriJointState> m_friJointStatePort;
+	OutputPort< std::vector<double> > m_vecJointStatePort;
 
 	OutputPort<geometry_msgs::Pose>  m_msrCartPosPort;
 	OutputPort<geometry_msgs::Pose>  m_cmdCartPosPort;

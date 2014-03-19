@@ -55,6 +55,7 @@ FRIServerRT::FRIServerRT(const string& name) :
 			"Port containing the status of the FRI communication");
 	this->addPort("msrJointState", m_jointStatePort);
 	this->addPort("msrFriJointState", m_friJointStatePort);
+	this->addPort("msrVecJointState", m_vecJointStatePort);
 	this->addPort("msrCartPos", m_msrCartPosPort);
 	this->addPort("msrExtCartWrench", m_estExtTcpWrenchPort);
 	this->addPort("cmdCartPos", m_cmdCartPosPort);
@@ -99,20 +100,25 @@ bool FRIServerRT::configureHook() {
 	fri_state_last = FRI_STATE_INVALID;
 
 	//Resizing dynamic size objects
-	m_jointStates.name.resize(LBR_MNJ);
-	m_jointStates.position.resize(LBR_MNJ);
-	m_jointStates.effort.resize(LBR_MNJ);
-	m_jointStates.header.frame_id = "dummy_frame_id";
+	m_jointState.name.resize(LBR_MNJ);
+	m_jointState.position.resize(LBR_MNJ);
+	m_jointState.effort.resize(LBR_MNJ);
+	m_jointState.header.frame_id = "dummy_frame_id";
 	m_friJointState.header.frame_id = "dummy_frame_id";
-
-	jacobianPort.setDataSample(m_jac);
 
 	for (unsigned int i = 0; i < LBR_MNJ; i++) {
 		std::ostringstream ss;
 		ss << "arm_" << i+1 <<"_joint";
-		m_jointStates.name[i] = ss.str();
+		m_jointState.name[i] = ss.str();
 	}
-	m_jointStatePort.setDataSample(m_jointStates);
+
+	m_vecJointState.resize(LBR_MNJ);
+
+	m_jointStatePort.setDataSample(m_jointState);
+	m_friJointStatePort.setDataSample(m_friJointState);
+	m_vecJointStatePort.setDataSample(m_vecJointState);
+
+	jacobianPort.setDataSample(m_jac);
 
 	provides()->addAttribute("counter", counter);
 
@@ -145,22 +151,24 @@ void FRIServerRT::updateHook() {
 
 		// Fill in fri_joint_state and joint_state
 		for (unsigned int i = 0; i < LBR_MNJ; i++) {
+			m_vecJointState[i] = m_msr_data.data.msrJntPos[i];
 			m_friJointState.msrJntPos[i] = m_msr_data.data.msrJntPos[i];
 			m_friJointState.cmdJntPos[i] = m_msr_data.data.cmdJntPos[i];
 			m_friJointState.cmdJntPosFriOffset[i] = m_msr_data.data.cmdJntPosFriOffset[i];
 			m_friJointState.msrJntTrq[i] = m_msr_data.data.msrJntTrq[i];
 			m_friJointState.estExtJntTrq[i] = m_msr_data.data.estExtJntTrq[i];
 		}
-		m_jointStates.position.assign(m_msr_data.data.msrJntPos,
+		m_jointState.position.assign(m_msr_data.data.msrJntPos,
 				m_msr_data.data.msrJntPos + LBR_MNJ);
-		m_jointStates.effort.assign(m_msr_data.data.estExtJntTrq,
+		m_jointState.effort.assign(m_msr_data.data.estExtJntTrq,
 				m_msr_data.data.estExtJntTrq + LBR_MNJ);
 
-		m_jointStates.header.stamp.fromNSec ( RTT::os::TimeService::Instance()->getNSecs() );
+		m_jointState.header.stamp.fromNSec ( RTT::os::TimeService::Instance()->getNSecs() );
 		//m_joint_states.header.stamp.fromSec( m_msr_data.intf.timestamp ); --> only accurate to 1/10th of a second !!!
-		m_friJointState.header.stamp=m_jointStates.header.stamp;
+		m_friJointState.header.stamp=m_jointState.header.stamp;
 		m_friJointStatePort.write(m_friJointState);
-		m_jointStatePort.write(m_jointStates);
+		m_jointStatePort.write(m_jointState);
+		m_vecJointStatePort.write(m_vecJointState);
 
 		//Put KRL data onto the ports(no parsing)
 		m_fromKRL = m_msr_data.krl;

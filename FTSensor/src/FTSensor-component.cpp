@@ -8,11 +8,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <rtdm/rtdm.h>
-//#include <errno.h>
 #include <fcntl.h>
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <rtnet.h>
 
 
 namespace iros {
@@ -40,37 +36,13 @@ using namespace std;
 	bool FTSensor::configureHook(){
 		Logger::In in((this->getName()));
 
-		struct sockaddr_in fts_addr;	/* Address of Net F/T. */
+		geometry_msgs::Vector3 dummy;
+		dummy.x = 0.0; dummy.y = 0.0; dummy.z = 0.0;
+		force_port.setDataSample(dummy);
+		torque_port.setDataSample(dummy);
 
-		if ((fts_socket = rt_dev_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-			log(Error) << "The socket to the F/T sensor couldn't be created. Error code: " << fts_socket << endlog();
+		if(!open_connection())
 			return false;
-		}
-		//setsockopt(fts_socket, SOL_SOCKET, SO_REUSEADDR, 0, 0); // This is not supported by RTnet!
-
-		fts_addr.sin_family = AF_INET;
-		fts_addr.sin_port = htons(fts_port);
-		inet_aton(fts_ip.c_str(), &fts_addr.sin_addr); // convert IP string to in_addr
-
-		int err;
-		if ((err = rt_dev_connect(fts_socket, (struct sockaddr *)&fts_addr, sizeof(fts_addr))) != 0) {
-			log(Error) << "The connection to the F/T sensor couldn't be established. Error code: " << err << endlog();
-			return false;
-		}
-
-		FTS_Command fts_request;
-		fts_request.command_header = htons(FTS_HEADER);
-		fts_request.command = htons(FTS_CMD_START_RT);
-		fts_request.sample_count = htonl(0); // Infinity
-
-		if((err = rt_dev_send(fts_socket, (void*) &fts_request, sizeof(fts_request), 0)) < sizeof(fts_request)) {
-			if(err < 0) {
-				log(Error) << "Error while sending start request to F/T sensor. Error code: " << err << endlog();
-			} else {
-				log(Error) << "Not all bytes were transmitted while sending start request to F/T sensor. Bytes transmitted: " << err << endlog();
-			}
-			return false;
-		}
 
 		log(Debug) << "FTSensor configured !" << endlog();
 		return true;
@@ -145,6 +117,49 @@ using namespace std;
 	void FTSensor::cleanupHook() {
 		Logger::In in((this->getName()));
 
+		close_connection();
+
+		log(Debug) << "FTSensor cleaned up !" << endlog();
+	}
+
+	bool FTSensor::open_connection() {
+
+		struct sockaddr_in fts_addr;	/* Address of Net F/T. */
+
+		if ((fts_socket = rt_dev_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+			log(Error) << "The socket to the F/T sensor couldn't be created. Error code: " << fts_socket << endlog();
+			return false;
+		}
+		//setsockopt(fts_socket, SOL_SOCKET, SO_REUSEADDR, 0, 0); // This is not supported by RTnet!
+
+		fts_addr.sin_family = AF_INET;
+		fts_addr.sin_port = htons(fts_port);
+		inet_aton(fts_ip.c_str(), &fts_addr.sin_addr); // convert IP string to in_addr
+
+		int err;
+		if ((err = rt_dev_connect(fts_socket, (struct sockaddr *)&fts_addr, sizeof(fts_addr))) != 0) {
+			log(Error) << "The connection to the F/T sensor couldn't be established. Error code: " << err << endlog();
+			return false;
+		}
+
+		FTS_Command fts_request;
+		fts_request.command_header = htons(FTS_HEADER);
+		fts_request.command = htons(FTS_CMD_START_RT);
+		fts_request.sample_count = htonl(0); // Infinity
+
+		if((err = rt_dev_send(fts_socket, (void*) &fts_request, sizeof(fts_request), 0)) < sizeof(fts_request)) {
+			if(err < 0) {
+				log(Error) << "Error while sending start request to F/T sensor. Error code: " << err << endlog();
+			} else {
+				log(Error) << "Not all bytes were transmitted while sending start request to F/T sensor. Bytes transmitted: " << err << endlog();
+			}
+			return false;
+		}
+
+		return true;
+	}
+
+	void FTSensor::close_connection() {
 		FTS_Command fts_request;
 		fts_request.command_header = htons(FTS_HEADER);
 		fts_request.command = htons(FTS_CMD_STOP);
@@ -153,10 +168,10 @@ using namespace std;
 		if(rt_dev_send(fts_socket, (void*) &fts_request, sizeof(fts_request), 0) < sizeof(fts_request)) {
 			log(Error) << "Error while sensing stop request to F/T sensor."<< endlog();
 		}
+
 		if(rt_dev_close(fts_socket) != 0) {
 			log(Error) << "Error while closing socket to F/T sensor." << endlog();
 		}
-		log(Debug) << "FTSensor cleaned up !" << endlog();
 	}
 }
 

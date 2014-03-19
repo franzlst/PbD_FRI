@@ -21,6 +21,9 @@ using namespace std;
 		void cleanupHook();
 
 	  private:
+		bool open_connection();
+		void close_connection();
+
 		string fts_ip;
 		int fts_port;
 		int fts_socket;
